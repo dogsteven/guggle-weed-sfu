@@ -5,9 +5,11 @@ import { Result } from "./utils/result";
 export type TransportType = "send" | "receive";
 export type ProducerType = "video" | "audio" | "screen-video" | "screen-audio";
 
-export default class Attendee extends EventEmitter<{
+type AttendeeEvents = {
   left: []
-}> {
+}
+
+export default class Attendee extends EventEmitter<AttendeeEvents> {
   public readonly id: any;
   private _closed: boolean;
   private readonly _sendTransport: types.WebRtcTransport;
@@ -293,11 +295,6 @@ export default class Attendee extends EventEmitter<{
     };
   }
 
-  private prepareForClosing() {
-    this._sendTransport.close();
-    this._receiveTransport.close();
-  }
-
   public close(leave: boolean = true) {
     if (this._closed) {
       return;
@@ -305,7 +302,8 @@ export default class Attendee extends EventEmitter<{
 
     this._closed = true;
 
-    this.prepareForClosing();
+    this._sendTransport.close();
+    this._receiveTransport.close();
 
     if (leave) {
       this.emit("left");

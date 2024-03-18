@@ -1,16 +1,26 @@
 import { types } from "mediasoup";
 import { EventEmitter } from "stream";
-import Attendee from "./attendee";
+import Attendee, { ProducerType, TransportType } from "./attendee";
 import mediasoupConfiguration from "../configurations/mediasoupConfiguration";
 import { Result } from "./utils/result";
 
-export default class Meeting extends EventEmitter<{
+type MeetingEvents = {
   attendeeLeft: [any]
-}> {
+}
+
+export default class Meeting extends EventEmitter<MeetingEvents> {
   public readonly id: any;
   public readonly hostId: any;
   private readonly _router: types.Router;
   private readonly _attendees: Map<any, Attendee>;
+
+  public get routerRtpCapabilities(): types.RtpCapabilities {
+    return this._router.rtpCapabilities;
+  }
+
+  public get producerIds(): string[] {
+    return Array.from(this._attendees.values()).flatMap((attendee) => attendee.producerIds);
+  }
 
   private constructor(id: any, hostId: any, router: types.Router) {
     super();
@@ -39,6 +49,10 @@ export default class Meeting extends EventEmitter<{
     this._router.close();
   }
 
+  
+  /*
+  BEGIN ATTENDEE SECTION
+  */
   private async createWebRtcTransport(): Promise<Result<types.WebRtcTransport>> {
     try {
       const { maxIncomingBitrate, initialAvailableOutgoingBitrate } = mediasoupConfiguration.mediasoup.webRtcTransport
@@ -155,6 +169,19 @@ export default class Meeting extends EventEmitter<{
     }
   }
 
+  public async connectTransport(attendeeId: any, transportType: TransportType, dtlsParameters: types.DtlsParameters): Promise<Result<any>> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return await attendee.connectTransport(transportType, dtlsParameters);
+  }
+
   public removeAttendee(attendeeId: any): Result<any> {
     if (!this._attendees.has(attendeeId)) {
       return {
@@ -174,4 +201,110 @@ export default class Meeting extends EventEmitter<{
       data: {}
     };
   }
+  /*
+  END ATTENDEE SECTION
+  */
+
+  /*
+  BEGIN PRODUCER SECTION
+  */
+  public async produceMedia(attendeeId: any, producerType: ProducerType, rtpParameters: types.RtpParameters): Promise<Result<types.Producer>> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return await attendee.produceMedia(producerType, rtpParameters);
+  }
+
+  public pauseProducer(attendeeId: any, producerType: ProducerType): Result<any> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return attendee.pauseProducer(producerType);
+  }
+
+  public resumeProducer(attendeeId: any, producerType: ProducerType): Result<any> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return attendee.resumeProducer(producerType);
+  }
+
+  public closeProducer(attendeeId: any, producerType: ProducerType): Result<any> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return attendee.closeProducer(producerType);
+  }
+  /*
+  END PRODUCER SECTION
+  */
+
+  /*
+  BEGIN CONSUMER SECTION
+  */
+  public async consumeMedia(attendeeId: any, producerId: string, rtpCapabilities: types.RtpCapabilities): Promise<Result<types.Consumer>> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return await attendee.consumeMedia(producerId, rtpCapabilities);
+  }
+
+  public pauseConsumer(attendeeId: any, consumerId: string): Result<any> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return attendee.pauseConsumer(consumerId);
+  }
+
+  public resumeConsumer(attendeeId: any, consumerId: string): Result<any> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return attendee.resumeConsumer(consumerId);
+  }
+  /*
+  END CONSUMER SECTION
+  */
 }
