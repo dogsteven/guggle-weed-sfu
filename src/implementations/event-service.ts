@@ -1,13 +1,6 @@
 import eventServiceConfiguration from "../configurations/eventServiceConfiguration";
 import EventService from "../abstractions/event-service";
-import { v4 } from "uuid";
 import axios from "axios";
-
-type Message = {
-  id: any;
-  event: string;
-  payload: any;
-}
 
 export default class EventServiceImplementation implements EventService {
   private static readonly _serviceUrl = `${eventServiceConfiguration.host}:${eventServiceConfiguration.port}/event-service`;
@@ -16,16 +9,10 @@ export default class EventServiceImplementation implements EventService {
   public constructor() {}
 
   public publish(event: string, payload: any): void {
-    const message: Message = {
-      id: v4(),
-      event: event,
-      payload: payload
-    };
-
-    this.execute(message);
+    this.execute(event, payload);
   }
 
-  private request(message: Message): Promise<any> {
+  private request(event: string, payload: any): Promise<any> {
     return axios({
       method: "post",
       url: EventServiceImplementation._serviceUrl,
@@ -33,19 +20,19 @@ export default class EventServiceImplementation implements EventService {
         "Content-Type": "application/json"
       },
       data: {
-        event: message.event,
-        payload: message.payload
+        event: event,
+        payload: payload
       }
     });
   }
   
-  public async execute(message: Message, times: number = 0) {
+  public async execute(event: string, payload: any, times: number = 0) {
     try {
-      await this.request(message);
+      await this.request(event, payload);
     } catch (error) {
       if (times < EventServiceImplementation._retryIntervals.length) {
         setTimeout(() => {
-          this.execute(message, times + 1);
+          this.execute(event, payload, times + 1);
         }, EventServiceImplementation._retryIntervals[times]);
       }
     }
