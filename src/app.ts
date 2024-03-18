@@ -142,6 +142,7 @@ class GuggleWeedApplication {
       response.json({
         status: "success",
         data: {
+          routerRtpCapabilities: meeting.routerRtpCapabilities,
           sendTransport: {
             id: sendTransport.id,
             iceParameters: sendTransport.iceParameters,
@@ -247,6 +248,12 @@ class GuggleWeedApplication {
           producerType: producerType,
           producerId: producer.id
         });
+      });
+
+      this._eventService.publish("producerCreated", {
+        meetingId: meeting.id,
+        attendeeId: username,
+        producerId: producer.id
       });
 
       response.json({
