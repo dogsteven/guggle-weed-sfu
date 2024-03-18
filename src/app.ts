@@ -12,8 +12,25 @@ import { types } from "mediasoup";
 import MeetingRepository from "./abstractions/meeting-repository";
 import EventServiceImplementation from "./implementations/event-service";
 
-async function buildContainer() {
-  try {
+class GuggleWeedApplication {
+  private readonly _expressApplication: ExpressApplication;
+  private readonly _httpsServer: HttpsServer;
+  private readonly _eventService: EventService;
+  private readonly _meetingRepository: MeetingRepository;
+
+  public constructor(services: {
+    expressApplication: ExpressApplication,
+    httpsServer: HttpsServer,
+    eventService: EventService,
+    meetingRepository: MeetingRepository
+  }) {
+    this._expressApplication = services.expressApplication;
+    this._httpsServer = services.httpsServer;
+    this._eventService = services.eventService;
+    this._meetingRepository = services.meetingRepository;
+  }
+
+  private static async buildContainer() {
     const container = createContainer({
       injectionMode: InjectionMode.PROXY,
       strict: true
@@ -46,28 +63,16 @@ async function buildContainer() {
     });
 
     return container;
-  } catch (error) {
-    console.error(error);
-    return null;
   }
-}
 
-class GuggleWeedApplication {
-  private readonly _expressApplication: ExpressApplication;
-  private readonly _httpsServer: HttpsServer;
-  private readonly _eventService: EventService;
-  private readonly _meetingRepository: MeetingRepository;
+  public static async main() {
+    const container = await this.buildContainer();
 
-  public constructor(services: {
-    expressApplication: ExpressApplication,
-    httpsServer: HttpsServer,
-    eventService: EventServiceImplementation,
-    meetingRepository: MeetingRepositoryImplementation
-  }) {
-    this._expressApplication = services.expressApplication;
-    this._httpsServer = services.httpsServer;
-    this._eventService = services.eventService;
-    this._meetingRepository = services.meetingRepository;
+    const gwApplication = container.resolve("gwApplication") as GuggleWeedApplication;
+
+    await gwApplication.boot();
+
+    await gwApplication.listen();
   }
 
   private bootMeetingSection() {
@@ -445,12 +450,4 @@ class GuggleWeedApplication {
   }
 }
 
-(async () => {
-  const container = await buildContainer();
-
-  const gwApplication = container.resolve("gwApplication") as GuggleWeedApplication;
-
-  await gwApplication.boot();
-
-  await gwApplication.listen();
-})();
+GuggleWeedApplication.main();
