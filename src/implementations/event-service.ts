@@ -36,20 +36,18 @@ export default class EventServiceImplementation implements EventService {
         event: message.event,
         payload: message.payload
       }
-    })
+    });
   }
   
   public async execute(message: Message, times: number = 0) {
-    if (times >= EventServiceImplementation._retryIntervals.length) {
-      return;
-    }
-
     try {
       await this.request(message);
     } catch (error) {
-      setTimeout(() => {
-        this.execute(message, times + 1);
-      }, EventServiceImplementation._retryIntervals[times]);
+      if (times < EventServiceImplementation._retryIntervals.length) {
+        setTimeout(() => {
+          this.execute(message, times + 1);
+        }, EventServiceImplementation._retryIntervals[times]);
+      }
     }
   }
 }
