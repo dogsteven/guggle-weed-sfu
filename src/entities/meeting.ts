@@ -77,10 +77,11 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
       const { maxIncomingBitrate, initialAvailableOutgoingBitrate } = mediasoupConfiguration.mediasoup.webRtcTransport
 
       const transport = await this._router.createWebRtcTransport({
-        listenIps: mediasoupConfiguration.mediasoup.webRtcTransport.listenIps,
+        listenInfos: mediasoupConfiguration.mediasoup.webRtcTransport.listenInfos,
         enableUdp: true,
         enableTcp: true,
         preferUdp: true,
+        iceConsentTimeout: 20,
         initialAvailableOutgoingBitrate: initialAvailableOutgoingBitrate
       });
 

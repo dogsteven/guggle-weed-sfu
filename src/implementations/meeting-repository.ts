@@ -3,7 +3,7 @@ import Meeting from "../entities/meeting";
 import WorkerRepository from "./worker-repository";
 import { v4 } from "uuid";
 
-export default class MeetingRepository {
+export default class MeetingRepositoryImplementation implements MeetingRepositoryImplementation {
   private readonly _workerRepository: WorkerRepository;
   private readonly _meetings: Map<any, Meeting>;
 

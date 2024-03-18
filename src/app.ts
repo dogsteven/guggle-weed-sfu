@@ -1,15 +1,15 @@
 import fs from "fs";
-import path, { join } from "path";
+import path from "path";
 import awilix from "awilix";
 import express, { Application as ExpressApplication } from "express";
 import { createServer as createHttpsServer, Server as HttpsServer } from "https";
-import { Server as SocketIOServer } from "socket.io";
-import WorkerRepository from "./repositories/worker-repository";
-import MeetingRepository from "./repositories/meeting-repository";
+import WorkerRepositoryImplementation from "./implementations/worker-repository";
+import MeetingRepositoryImplementation from "./implementations/meeting-repository";
 import EventService from "./abstractions/event-service";
 import mediasoupConfiguration from "./configurations/mediasoupConfiguration";
 import { ProducerType, TransportType } from "./entities/attendee";
 import { types } from "mediasoup";
+import MeetingRepository from "./abstractions/meeting-repository";
 
 async function buildContainer() {
   try {
@@ -27,14 +27,14 @@ async function buildContainer() {
 
     // const socketIO = new SocketIOServer(httpsServer);
 
-    const workerRepository = await WorkerRepository.create();
+    const workerRepository = await WorkerRepositoryImplementation.create();
   
     container.register({
       expressApplication: awilix.asValue(expressApplication),
       httpsServer: awilix.asValue(httpsServer),
       // socketIO: awilix.asValue(socketIO),
       workerRepository: awilix.asValue(workerRepository),
-      meetingRepository: awilix.asClass(MeetingRepository, { lifetime: awilix.Lifetime.SINGLETON })
+      meetingRepository: awilix.asClass(MeetingRepositoryImplementation, { lifetime: awilix.Lifetime.SINGLETON })
     });
 
     return container;
@@ -53,7 +53,7 @@ class GuggleWeedApplication {
     expressApplication: ExpressApplication,
     httpsServer: HttpsServer,
     eventService: EventService,
-    meetingRepository: MeetingRepository
+    meetingRepository: MeetingRepositoryImplementation
   }) {
     this._expressApplication = services.expressApplication;
     this._httpsServer = services.httpsServer;
@@ -430,8 +430,8 @@ class GuggleWeedApplication {
   }
 
   public async listen() {
-    this._httpsServer.listen(mediasoupConfiguration.listenPort, () => {
-      console.log(`Server is running at https://localhost:${mediasoupConfiguration.listenPort}`);
+    this._httpsServer.listen(mediasoupConfiguration.server.listenPort, () => {
+      console.log(`Server is running at https://${mediasoupConfiguration.server.listenIp}:${mediasoupConfiguration.server.listenPort}`);
     });
   }
 }

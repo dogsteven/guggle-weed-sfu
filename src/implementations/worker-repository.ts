@@ -1,7 +1,8 @@
 import { createWorker, types } from "mediasoup";
 import mediasoupConfiguration from "../configurations/mediasoupConfiguration";
+import WorkerRepository from "../abstractions/worker-repository";
 
-export default class WorkerRepository {
+export default class WorkerRepositoryImplementation implements WorkerRepository {
   private readonly _workers: types.Worker[];
   private _currentWorkerIndex: number;
 
@@ -10,7 +11,7 @@ export default class WorkerRepository {
     this._currentWorkerIndex = 0;
   }
 
-  public static async create(): Promise<WorkerRepository> {
+  public static async create(): Promise<WorkerRepositoryImplementation> {
     const workers: types.Worker[] = [];
 
     for (let i = 0; i < mediasoupConfiguration.mediasoup.numWorkers; ++i) {
@@ -23,7 +24,7 @@ export default class WorkerRepository {
       workers.push(worker);
     }
 
-    return new WorkerRepository(workers);
+    return new WorkerRepositoryImplementation(workers);
   }
 
   public get worker(): types.Worker {
