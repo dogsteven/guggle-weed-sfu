@@ -24,7 +24,7 @@ const getLocalIp = () => {
 export default {
   server: {
     listenIp: "0.0.0.0",
-    listenPort: process.env.PORT || 8100,
+    listenPort: 8100,
   },
 
   mediasoup: {

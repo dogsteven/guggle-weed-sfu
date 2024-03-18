@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import awilix from "awilix";
+import { createContainer, asValue, asClass, InjectionMode } from "awilix";
 import express, { Application as ExpressApplication } from "express";
 import { createServer as createHttpsServer, Server as HttpsServer } from "https";
 import WorkerRepositoryImplementation from "./implementations/worker-repository";
@@ -14,8 +14,8 @@ import EventServiceImplementation from "./implementations/event-service";
 
 async function buildContainer() {
   try {
-    const container = awilix.createContainer({
-      injectionMode: awilix.InjectionMode.PROXY,
+    const container = createContainer({
+      injectionMode: InjectionMode.PROXY,
       strict: true
     });
 
@@ -31,22 +31,23 @@ async function buildContainer() {
     const workerRepository = await WorkerRepositoryImplementation.create();
   
     container.register({
-      expressApplication: awilix.asValue(expressApplication),
-      httpsServer: awilix.asValue(httpsServer),
-      eventService: awilix.asValue(eventService),
-      workerRepository: awilix.asValue(workerRepository)
+      expressApplication: asValue(expressApplication),
+      httpsServer: asValue(httpsServer),
+      eventService: asValue(eventService),
+      workerRepository: asValue(workerRepository)
     });
 
     container.register({
-      meetingRepository: awilix.asClass(MeetingRepositoryImplementation, { lifetime: awilix.Lifetime.SINGLETON })
+      meetingRepository: asClass(MeetingRepositoryImplementation).singleton()
     });
 
     container.register({
-      gwApplication: awilix.asClass(GuggleWeedApplication)
+      gwApplication: asClass(GuggleWeedApplication).singleton()
     });
 
     return container;
-  } catch {
+  } catch (error) {
+    console.error(error);
     return null;
   }
 }
@@ -60,7 +61,7 @@ class GuggleWeedApplication {
   public constructor(services: {
     expressApplication: ExpressApplication,
     httpsServer: HttpsServer,
-    eventService: EventService,
+    eventService: EventServiceImplementation,
     meetingRepository: MeetingRepositoryImplementation
   }) {
     this._expressApplication = services.expressApplication;
@@ -452,4 +453,4 @@ class GuggleWeedApplication {
   await gwApplication.boot();
 
   await gwApplication.listen();
-});
+})();
