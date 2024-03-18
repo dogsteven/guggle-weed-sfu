@@ -156,40 +156,54 @@ export default class Attendee extends EventEmitter<AttendeeEvents> {
     }
   }
 
-  public pauseProducer(producerType: ProducerType): Result<any> {
-    if (!this._producers.has(producerType)) {
+  public async pauseProducer(producerType: ProducerType): Promise<Result<any>> {
+    try {
+      if (!this._producers.has(producerType)) {
+        return {
+          status: "failed",
+          message: `There is no producer of type ${producerType} at the moment`
+        };
+      }
+
+      const producer = this._producers.get(producerType);
+
+      await producer.pause();
+
+      return {
+        status: "success",
+        data: {}
+      };
+    } catch (error) {
       return {
         status: "failed",
-        message: `There is no producer of type ${producerType} at the moment`
+        message: error
       };
     }
-
-    const producer = this._producers.get(producerType);
-
-    producer.pause();
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
 
-  public resumeProducer(producerType: ProducerType): Result<any> {
-    if (!this._producers.has(producerType)) {
+  public async resumeProducer(producerType: ProducerType): Promise<Result<any>> {
+    try {
+      if (!this._producers.has(producerType)) {
+        return {
+          status: "failed",
+          message: `There is no producer of type ${producerType} at the moment`
+        };
+      }
+
+      const producer = this._producers.get(producerType);
+
+      await producer.resume();
+
+      return {
+        status: "success",
+        data: {}
+      };
+    } catch (error) {
       return {
         status: "failed",
-        message: `There is no producer of type ${producerType} at the moment`
+        message: error
       };
     }
-
-    const producer = this._producers.get(producerType);
-
-    producer.resume();
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
 
 
@@ -259,40 +273,54 @@ export default class Attendee extends EventEmitter<AttendeeEvents> {
     }
   }
 
-  public pauseConsumer(consumerId: string): Result<any> {
-    if (!this._consumers.has(consumerId)) {
+  public async pauseConsumer(consumerId: string): Promise<Result<any>> {
+    try {
+      if (!this._consumers.has(consumerId)) {
+        return {
+          status: "failed",
+          message: `There is no consumer with id ${consumerId} at the moment`
+        };
+      }
+
+      const consumer = this._consumers.get(consumerId);
+
+      await consumer.pause();
+
+      return {
+        status: "success",
+        data: {}
+      };
+    } catch (error) {
       return {
         status: "failed",
-        message: `There is no consumer with id ${consumerId} at the moment`
+        message: error
       };
     }
-
-    const consumer = this._consumers.get(consumerId);
-
-    consumer.pause();
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
 
-  public resumeConsumer(consumerId: string): Result<any> {
-    if (!this._consumers.has(consumerId)) {
+  public async resumeConsumer(consumerId: string): Promise<Result<any>> {
+    try {
+      if (!this._consumers.has(consumerId)) {
+        return {
+          status: "failed",
+          message: `There is no consumer with id ${consumerId} at the moment`
+        };
+      }
+
+      const consumer = this._consumers.get(consumerId);
+
+      await consumer.resume();
+
+      return {
+        status: "success",
+        data: {}
+      };
+    } catch (error) {
       return {
         status: "failed",
-        message: `There is no consumer with id ${consumerId} at the moment`
+        message: error
       };
     }
-
-    const consumer = this._consumers.get(consumerId);
-
-    consumer.resume();
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
 
   public close(leave: boolean = true) {

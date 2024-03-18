@@ -6,10 +6,12 @@ import { Result } from "./utils/result";
 
 type MeetingEvents = {
   attendeeLeft: [any]
+  meetingEnded: []
 }
 
 export default class Meeting extends EventEmitter<MeetingEvents> {
   public readonly id: any;
+  private _ended: boolean;
   public readonly hostId: any;
   private readonly _router: types.Router;
   private readonly _attendees: Map<any, Attendee>;
@@ -26,6 +28,7 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
     super();
 
     this.id = id;
+    this._ended = false;
     this.hostId = hostId;
     this._router = router;
     this._attendees = new Map<any, Attendee>();
@@ -41,12 +44,28 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
     return new Meeting(id, hostId, router);
   }
 
-  public end() {
+  public end(): Result<any> {
+    if (this._ended) {
+      return {
+        status: "failed",
+        message: `This meeting has been ended`
+      };
+    }
+
+    this._ended = true;
+
     for (const [_, attendee] of this._attendees) {
       attendee.close(false);
     }
 
     this._router.close();
+
+    this.emit("meetingEnded");
+
+    return {
+      status: "success",
+      data: {}
+    };
   }
 
   
@@ -221,7 +240,7 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
     return await attendee.produceMedia(producerType, rtpParameters);
   }
 
-  public pauseProducer(attendeeId: any, producerType: ProducerType): Result<any> {
+  public async pauseProducer(attendeeId: any, producerType: ProducerType): Promise<Result<any>> {
     if (!this._attendees.has(attendeeId)) {
       return {
         status: "failed",
@@ -231,10 +250,10 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
 
     const attendee = this._attendees.get(attendeeId);
 
-    return attendee.pauseProducer(producerType);
+    return await attendee.pauseProducer(producerType);
   }
 
-  public resumeProducer(attendeeId: any, producerType: ProducerType): Result<any> {
+  public async resumeProducer(attendeeId: any, producerType: ProducerType): Promise<Result<any>> {
     if (!this._attendees.has(attendeeId)) {
       return {
         status: "failed",
@@ -244,7 +263,7 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
 
     const attendee = this._attendees.get(attendeeId);
 
-    return attendee.resumeProducer(producerType);
+    return await attendee.resumeProducer(producerType);
   }
 
   public closeProducer(attendeeId: any, producerType: ProducerType): Result<any> {
@@ -279,7 +298,7 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
     return await attendee.consumeMedia(producerId, rtpCapabilities);
   }
 
-  public pauseConsumer(attendeeId: any, consumerId: string): Result<any> {
+  public async pauseConsumer(attendeeId: any, consumerId: string): Promise<Result<any>> {
     if (!this._attendees.has(attendeeId)) {
       return {
         status: "failed",
@@ -289,10 +308,10 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
 
     const attendee = this._attendees.get(attendeeId);
 
-    return attendee.pauseConsumer(consumerId);
+    return await attendee.pauseConsumer(consumerId);
   }
 
-  public resumeConsumer(attendeeId: any, consumerId: string): Result<any> {
+  public async resumeConsumer(attendeeId: any, consumerId: string): Promise<Result<any>> {
     if (!this._attendees.has(attendeeId)) {
       return {
         status: "failed",
@@ -302,7 +321,7 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
 
     const attendee = this._attendees.get(attendeeId);
 
-    return attendee.resumeConsumer(consumerId);
+    return await attendee.resumeConsumer(consumerId);
   }
   /*
   END CONSUMER SECTION

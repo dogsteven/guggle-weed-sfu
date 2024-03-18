@@ -31,6 +31,10 @@ export default class MeetingRepository {
   public async create(hostId: any): Promise<Meeting> {
     const meeting = await Meeting.create(v4(), hostId, this._workerRepository.worker);
 
+    meeting.once("meetingEnded", () => {
+      this._meetings.delete(meeting.id)
+    });
+
     this._meetings.set(meeting.id, meeting);
 
     return meeting;
