@@ -10,6 +10,7 @@ import mediasoupConfiguration from "./configurations/mediasoupConfiguration";
 import { ProducerType, TransportType } from "./entities/attendee";
 import { types } from "mediasoup";
 import MeetingRepository from "./abstractions/meeting-repository";
+import EventServiceImplementation from "./implementations/event-service";
 
 async function buildContainer() {
   try {
@@ -25,16 +26,23 @@ async function buildContainer() {
       cert: fs.readFileSync(path.resolve(__dirname, "../ssl/cert.pem"), "utf-8")
     }, expressApplication);
 
-    // const socketIO = new SocketIOServer(httpsServer);
+    const eventService = new EventServiceImplementation();
 
     const workerRepository = await WorkerRepositoryImplementation.create();
   
     container.register({
       expressApplication: awilix.asValue(expressApplication),
       httpsServer: awilix.asValue(httpsServer),
-      // socketIO: awilix.asValue(socketIO),
-      workerRepository: awilix.asValue(workerRepository),
+      eventService: awilix.asValue(eventService),
+      workerRepository: awilix.asValue(workerRepository)
+    });
+
+    container.register({
       meetingRepository: awilix.asClass(MeetingRepositoryImplementation, { lifetime: awilix.Lifetime.SINGLETON })
+    });
+
+    container.register({
+      gwApplication: awilix.asClass(GuggleWeedApplication)
     });
 
     return container;
@@ -435,3 +443,13 @@ class GuggleWeedApplication {
     });
   }
 }
+
+(async () => {
+  const container = await buildContainer();
+
+  const gwApplication = container.resolve("gwApplication") as GuggleWeedApplication;
+
+  await gwApplication.boot();
+
+  await gwApplication.listen();
+});
