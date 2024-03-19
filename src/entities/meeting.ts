@@ -202,9 +202,9 @@ export default class Meeting {
 
     const attendee = this._attendees.get(attendeeId);
 
-    this._attendees.delete(attendeeId);
-
     attendee.close();
+
+    this._attendees.delete(attendeeId);
 
     return {
       status: "success",

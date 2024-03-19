@@ -131,6 +131,10 @@ class GuggleWeedApplication {
 
       const endingResult = meeting.end();
 
+      if (endingResult.status === "success") {
+        this._meetingRepository.delete(meeting.id);
+      }
+
       response.json(endingResult);
     });
   }
