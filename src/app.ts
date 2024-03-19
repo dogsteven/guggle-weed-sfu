@@ -6,7 +6,6 @@ import { createServer as createHttpsServer, Server as HttpsServer } from "https"
 import WorkerRepositoryImplementation from "./implementations/worker-repository";
 import MeetingRepositoryImplementation from "./implementations/meeting-repository";
 import EventService from "./abstractions/event-service";
-import mediasoupConfiguration from "./configurations/mediasoupConfiguration";
 import { ProducerType, TransportType } from "./entities/attendee";
 import { types } from "mediasoup";
 import MeetingRepository from "./abstractions/meeting-repository";
@@ -164,9 +163,12 @@ class GuggleWeedApplication {
       const { attendee, sendTransport, receiveTransport } = joiningResult.data;
 
       attendee.once("error", () => {
-        this._eventService.publish("attendeeError", {
-          meetingId: meeting.id,
-          attendeeId: attendee.id
+        this._eventService.publish({
+          event: "attendeeError",
+          payload: {
+            meetingId: meeting.id,
+            attendeId: attendee.id
+          }
         });
       });
 
@@ -255,29 +257,38 @@ class GuggleWeedApplication {
       const producer = producerResult.data;
 
       producer.observer.once("close", () => {
-        this._eventService.publish("producerClosed", {
-          meetingId: meeting.id,
-          attendeeId: username,
-          producerType: producerType,
-          producerId: producer.id
+        this._eventService.publish({
+          event: "producerClosed",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            producerType: producerType,
+            producerId: producer.id
+          }
         });
       });
 
       producer.observer.on("pause", () => {
-        this._eventService.publish("producerPaused", {
-          meetingId: meeting.id,
-          attendeeId: username,
-          producerType: producerType,
-          producerId: producer.id
+        this._eventService.publish({
+          event: "producerPaused",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            producerType: producerType,
+            producerId: producer.id
+          }
         });
       });
 
       producer.observer.on("resume", () => {
-        this._eventService.publish("producerResumed", {
-          meetingId: meeting.id,
-          attendeeId: username,
-          producerType: producerType,
-          producerId: producer.id
+        this._eventService.publish({
+          event: "producerResumed",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            producerType: producerType,
+            producerId: producer.id
+          }
         });
       });
 
@@ -376,26 +387,35 @@ class GuggleWeedApplication {
       const consumer = consumerResult.data;
 
       consumer.observer.on("close", () => {
-        this._eventService.publish("consumerClosed", {
-          meetingId: meeting.id,
-          attendeeId: username,
-          consumerId: consumer.id
+        this._eventService.publish({
+          event: "consumerClosed",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            consumerId: consumer.id
+          }
         });
       });
 
       consumer.observer.on("pause", () => {
-        this._eventService.publish("consumerPaused", {
-          meetingId: meeting.id,
-          attendeeId: username,
-          consumerId: consumer.id
+        this._eventService.publish({
+          event: "consumerPaused",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            consumerId: consumer.id
+          }
         });
       });
 
       consumer.observer.on("resume", () => {
-        this._eventService.publish("consumerResumed", {
-          meetingId: meeting.id,
-          attendeeId: username,
-          consumerId: consumer.id
+        this._eventService.publish({
+          event: "consumerResumed",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            consumerId: consumer.id
+          }
         });
       });
 

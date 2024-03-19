@@ -1,3 +1,8 @@
+export type Message = {
+  event: string;
+  payload: any;
+}
+
 export default interface EventService {
-  publish(event: string, payload: any): void
+  publish(message: Message): void
 }
