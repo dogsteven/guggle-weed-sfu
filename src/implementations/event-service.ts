@@ -3,7 +3,7 @@ import EventService from "../abstractions/event-service";
 import axios from "axios";
 
 export default class EventServiceImplementation implements EventService {
-  private static readonly _serviceUrl = `${eventServiceConfiguration.host}:${eventServiceConfiguration.port}/event-service`;
+  private static readonly _serviceUrl = `${eventServiceConfiguration.eventService.host}:${eventServiceConfiguration.eventService.port}/event-service`;
   private static readonly _retryIntervals = [100, 200, 400, 800, 1600];
 
   public constructor() {}

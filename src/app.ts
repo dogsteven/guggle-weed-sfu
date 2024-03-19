@@ -11,6 +11,7 @@ import { ProducerType, TransportType } from "./entities/attendee";
 import { types } from "mediasoup";
 import MeetingRepository from "./abstractions/meeting-repository";
 import EventServiceImplementation from "./implementations/event-service";
+import serverConfiguration from "./configurations/serverConfiguration";
 
 class GuggleWeedApplication {
   private readonly _expressApplication: ExpressApplication;
@@ -457,8 +458,8 @@ class GuggleWeedApplication {
   }
 
   public async listen() {
-    this._httpsServer.listen(mediasoupConfiguration.server.listenPort, () => {
-      console.log(`Server is running at https://${mediasoupConfiguration.server.listenIp}:${mediasoupConfiguration.server.listenPort}`);
+    this._httpsServer.listen(serverConfiguration.server.listenPort, () => {
+      console.log(`Server is running at https://${serverConfiguration.server.listenIp}:${serverConfiguration.server.listenPort}`);
     });
   }
 }
