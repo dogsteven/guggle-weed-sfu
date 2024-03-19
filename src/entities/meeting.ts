@@ -159,6 +159,10 @@ export default class Meeting {
 
       this._attendees.set(attendeeId, attendee);
 
+      attendee.once("error", () => {
+        this._attendees.delete(attendeeId);
+      });
+
       return {
         status: "success",
         data: {
