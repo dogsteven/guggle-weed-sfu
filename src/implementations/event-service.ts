@@ -1,35 +1,16 @@
-import serverConfiguration from "../configurations/serverConfiguration";
 import EventService, { Message } from "../abstractions/event-service";
-import axios from "axios";
+import { RedisClientType } from "redis";
 
 export default class EventServiceImplementation implements EventService {
-  private static readonly _serviceUrl = `${serverConfiguration.eventService.host}:${serverConfiguration.eventService.port}/event-service`;
-  private static readonly _retryIntervals = [100, 200, 300, 400, 500];
+  private readonly _redisPublisher: RedisClientType;
   
-  public constructor() {}
-
-  public publish(message: Message) {
-    this.send(message);
+  public constructor(services: {
+    redisPublisher: RedisClientType
+  }) {
+    this._redisPublisher = services.redisPublisher;
   }
 
-  private async send(message: Message, times: number = 0) {
-    try {
-      await axios({
-        url: EventServiceImplementation._serviceUrl,
-        method: "post",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        data: {
-          message: message
-        }
-      });
-    } catch {
-      if (times < EventServiceImplementation._retryIntervals.length) {
-        setTimeout(() => {
-          this.send(message, times + 1);
-        }, EventServiceImplementation._retryIntervals[times]);
-      }
-    }
+  public publish(message: Message) {
+    this._redisPublisher.publish("guggle-weed-sfu", JSON.stringify(message));
   }
 }

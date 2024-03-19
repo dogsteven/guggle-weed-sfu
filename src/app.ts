@@ -1,5 +1,3 @@
-// import fs from "fs";
-// import path from "path";
 import { createContainer, asValue, asClass, InjectionMode } from "awilix";
 import express, { Application as ExpressApplication } from "express";
 import { createServer as createHttpServer, Server as HttpServer } from "http";
@@ -12,10 +10,11 @@ import cors from "cors";
 import MeetingRepository from "./abstractions/meeting-repository";
 import EventServiceImplementation from "./implementations/event-service";
 import serverConfiguration from "./configurations/serverConfiguration";
+import { createClient } from "redis";
 
 class GuggleWeedApplication {
   private readonly _expressApplication: ExpressApplication;
-  private readonly _httpsServer: HttpServer;
+  private readonly _httpServer: HttpServer;
   private readonly _eventService: EventService;
   private readonly _meetingRepository: MeetingRepository;
 
@@ -26,7 +25,7 @@ class GuggleWeedApplication {
     meetingRepository: MeetingRepository
   }) {
     this._expressApplication = services.expressApplication;
-    this._httpsServer = services.httpsServer;
+    this._httpServer = services.httpsServer;
     this._eventService = services.eventService;
     this._meetingRepository = services.meetingRepository;
   }
@@ -41,18 +40,21 @@ class GuggleWeedApplication {
 
     const httpsServer = createHttpServer(expressApplication);
 
-    const eventService = new EventServiceImplementation();
-
     const workerRepository = await WorkerRepositoryImplementation.create();
+
+    const redisPublisher = createClient();
+
+    await redisPublisher.connect();
   
     container.register({
       expressApplication: asValue(expressApplication),
       httpsServer: asValue(httpsServer),
-      eventService: asValue(eventService),
-      workerRepository: asValue(workerRepository)
+      workerRepository: asValue(workerRepository),
+      redisPublisher: asValue(redisPublisher)
     });
 
     container.register({
+      eventService: asClass(EventServiceImplementation),
       meetingRepository: asClass(MeetingRepositoryImplementation).singleton()
     });
 
@@ -485,7 +487,7 @@ class GuggleWeedApplication {
   }
 
   private async listen() {
-    this._httpsServer.listen(serverConfiguration.server.listenPort, () => {
+    this._httpServer.listen(serverConfiguration.server.listenPort, () => {
       console.log(`Server is running at http://${serverConfiguration.server.listenIp}:${serverConfiguration.server.listenPort}`);
     });
   }

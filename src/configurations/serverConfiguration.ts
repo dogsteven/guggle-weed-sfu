@@ -6,9 +6,5 @@ export default {
   mediaBroker: {
     host: "http://localhost",
     port: process.env.MEDIA_BROKER_PORT || 8100,
-  },
-  eventService: {
-    host: "http://localhost",
-    port: process.env.EVENT_SERVICE_PORT || 8000
   }
 }
