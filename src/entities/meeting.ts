@@ -1,15 +1,14 @@
 import { types } from "mediasoup";
-import { EventEmitter } from "stream";
 import Attendee, { ProducerType, TransportType } from "./attendee";
 import mediasoupConfiguration from "../configurations/mediasoupConfiguration";
 import { Result } from "./utils/result";
+import { EventEmitter } from "events";
 
-type MeetingEvents = {
-  attendeeLeft: [any]
-  meetingEnded: []
+type MeetingEvent = {
+  "attendeeError": [any]
 }
 
-export default class Meeting extends EventEmitter<MeetingEvents> {
+export default class Meeting extends EventEmitter<MeetingEvent> {
   public readonly id: any;
   private _ended: boolean;
   public readonly hostId: any;
@@ -26,7 +25,6 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
 
   private constructor(id: any, hostId: any, router: types.Router) {
     super();
-
     this.id = id;
     this._ended = false;
     this.hostId = hostId;
@@ -55,12 +53,10 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
     this._ended = true;
 
     for (const [_, attendee] of this._attendees) {
-      attendee.close(false);
+      attendee.close();
     }
 
     this._router.close();
-
-    this.emit("meetingEnded");
 
     return {
       status: "success",
@@ -167,8 +163,8 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
 
       const attendee = new Attendee(attendeeId, sendTransport, receiveTransport);
 
-      attendee.once("left", () => {
-        this.emit("attendeeLeft", attendeeId);
+      attendee.once("error", () => {
+        this.emit("attendeeError", attendee.id);
       });
 
       this._attendees.set(attendeeId, attendee);
@@ -214,7 +210,7 @@ export default class Meeting extends EventEmitter<MeetingEvents> {
 
     this._attendees.delete(attendeeId);
 
-    attendee.close(true);
+    attendee.close();
 
     return {
       status: "success",

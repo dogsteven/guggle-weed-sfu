@@ -5,11 +5,11 @@ import { Result } from "./utils/result";
 export type TransportType = "send" | "receive";
 export type ProducerType = "video" | "audio" | "screen-video" | "screen-audio";
 
-type AttendeeEvents = {
-  left: []
+type AttendeeEvent = {
+  error: []
 }
 
-export default class Attendee extends EventEmitter<AttendeeEvents> {
+export default class Attendee extends EventEmitter<AttendeeEvent> {
   public readonly id: any;
   private _closed: boolean;
   private readonly _sendTransport: types.WebRtcTransport;
@@ -23,6 +23,7 @@ export default class Attendee extends EventEmitter<AttendeeEvents> {
 
   public constructor(id: any, sendTransport: types.WebRtcTransport, receiveTransport: types.WebRtcTransport) {
     super();
+
     this.id = id;
     this._closed = false;
     this._sendTransport = sendTransport;
@@ -31,11 +32,11 @@ export default class Attendee extends EventEmitter<AttendeeEvents> {
     this._consumers = new Map<string, types.Consumer>();
 
     Attendee.inititalizeTransport(this._sendTransport, () => {
-      this.close(true);
+      this.error();
     });
 
     Attendee.inititalizeTransport(this._receiveTransport, () => {
-      this.close(true);
+      this.error();
     });
   }
 
@@ -323,7 +324,7 @@ export default class Attendee extends EventEmitter<AttendeeEvents> {
     }
   }
 
-  public close(leave: boolean = true) {
+  private error() {
     if (this._closed) {
       return;
     }
@@ -333,8 +334,17 @@ export default class Attendee extends EventEmitter<AttendeeEvents> {
     this._sendTransport.close();
     this._receiveTransport.close();
 
-    if (leave) {
-      this.emit("left");
+    this.emit("error");
+  }
+
+  public close() {
+    if (this._closed) {
+      return;
     }
+
+    this._closed = true;
+
+    this._sendTransport.close();
+    this._receiveTransport.close();
   }
 }

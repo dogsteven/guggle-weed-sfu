@@ -59,7 +59,7 @@ class GuggleWeedApplication {
     });
 
     container.register({
-      gwApplication: asClass(GuggleWeedApplication).singleton()
+      application: asClass(GuggleWeedApplication).singleton()
     });
 
     return container;
@@ -68,29 +68,42 @@ class GuggleWeedApplication {
   public static async main() {
     const container = await this.buildContainer();
 
-    const gwApplication = container.resolve("gwApplication") as GuggleWeedApplication;
+    const application = container.resolve("application") as GuggleWeedApplication;
 
-    await gwApplication.boot();
-
-    await gwApplication.listen();
+    await application.boot();
+    await application.listen();
   }
 
   private bootMeetingSection() {
-    this._expressApplication.post("/startMeeting", async (request, response) => {
+    this._expressApplication.get("/meetings/:meetingId/producerIds", async (request, response) => {
+      const meetingId = request.params.meetingId;
+
+      const meetingResult = this._meetingRepository.get(meetingId);
+
+      if (meetingResult.status === "failed") {
+        response.json(meetingResult);
+        return;
+      }
+
+      const meeting = meetingResult.data;
+
+      response.json({
+        status: "success",
+        data: {
+          producerIds: meeting.producerIds
+        }
+      });
+    });
+
+    this._expressApplication.post("/meetings/start", async (request, response) => {
       const username = request.headers["x-username"] as string;
 
       const meeting = await this._meetingRepository.create(username);
 
-      meeting.on("attendeeLeft", (attendeeId) => {
-        this._eventService.publish("attendeeLeft", {
+      meeting.on("attendeeError", (attendeeId) => {
+        this._eventService.publish("attendeeError", {
           meetingId: meeting.id,
           attendeeId: attendeeId
-        });
-      });
-
-      meeting.once("meetingEnded", () => {
-        this._eventService.publish("meetingEnded", {
-          meetingId: meeting.id
         });
       });
 
@@ -102,9 +115,9 @@ class GuggleWeedApplication {
       });
     });
 
-    this._expressApplication.post("/endMeeting", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/end", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -130,9 +143,8 @@ class GuggleWeedApplication {
   }
 
   private bootAttendeeSection() {
-    this._expressApplication.post("/joinMeeting/:meetingId", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/join", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      
       const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
@@ -173,9 +185,9 @@ class GuggleWeedApplication {
       });
     });
 
-    this._expressApplication.post("/connectTransport", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingIds/connect", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingIds;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -193,9 +205,9 @@ class GuggleWeedApplication {
       response.json(connectingResult);
     });
 
-    this._expressApplication.post("/leaveMeeting", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/leave", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -213,9 +225,9 @@ class GuggleWeedApplication {
   }
 
   private bootProducerSection() {
-    this._expressApplication.post("/produceMedia", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/produceMedia", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -264,12 +276,6 @@ class GuggleWeedApplication {
         });
       });
 
-      this._eventService.publish("producerCreated", {
-        meetingId: meeting.id,
-        attendeeId: username,
-        producerId: producer.id
-      });
-
       response.json({
         status: "success",
         data: {
@@ -278,9 +284,9 @@ class GuggleWeedApplication {
       });
     });
 
-    this._expressApplication.post("/closeProducer", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/closeProducer", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -298,9 +304,9 @@ class GuggleWeedApplication {
       response.json(closingResult);
     });
 
-    this._expressApplication.post("/pauseProducer", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/pauseProducer", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -318,9 +324,9 @@ class GuggleWeedApplication {
       response.json(pausingResult);
     })
 
-    this._expressApplication.post("/resumeProducer", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/resumeProducer", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -340,9 +346,9 @@ class GuggleWeedApplication {
   }
 
   private bootConsumerSection() {
-    this._expressApplication.post("/consumeMedia", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/consumeMedia", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -398,9 +404,9 @@ class GuggleWeedApplication {
       });
     });
 
-    this._expressApplication.post("/pauseConsumer", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/pauseConsumer", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -418,9 +424,9 @@ class GuggleWeedApplication {
       response.json(pausingResult);
     });
 
-    this._expressApplication.post("/resumeConsumer", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/resumeConsumer", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.headers["x-meeting-id"] as string;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
