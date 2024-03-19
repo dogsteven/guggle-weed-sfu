@@ -158,7 +158,7 @@ class GuggleWeedApplication {
 
       const { attendee, sendTransport, receiveTransport } = joiningResult.data;
 
-      attendee.on("error", () => {
+      attendee.once("error", () => {
         this._eventService.publish("attendeeError", {
           meetingId: meeting.id,
           attendeeId: attendee.id
