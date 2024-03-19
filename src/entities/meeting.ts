@@ -2,13 +2,8 @@ import { types } from "mediasoup";
 import Attendee, { ProducerType, TransportType } from "./attendee";
 import mediasoupConfiguration from "../configurations/mediasoupConfiguration";
 import { Result } from "./utils/result";
-import { EventEmitter } from "events";
 
-type MeetingEvent = {
-  "attendeeError": [any]
-}
-
-export default class Meeting extends EventEmitter<MeetingEvent> {
+export default class Meeting {
   public readonly id: any;
   private _ended: boolean;
   public readonly hostId: any;
@@ -24,7 +19,6 @@ export default class Meeting extends EventEmitter<MeetingEvent> {
   }
 
   private constructor(id: any, hostId: any, router: types.Router) {
-    super();
     this.id = id;
     this._ended = false;
     this.hostId = hostId;
@@ -134,7 +128,7 @@ export default class Meeting extends EventEmitter<MeetingEvent> {
     }
   }
 
-  public async addAttendee(attendeeId: any): Promise<Result<{ sendTransport: types.WebRtcTransport, receiveTransport: types.WebRtcTransport }>> {
+  public async addAttendee(attendeeId: any): Promise<Result<{ attendee: Attendee, sendTransport: types.WebRtcTransport, receiveTransport: types.WebRtcTransport }>> {
     try {
       const reservationResult = this.reserveAttendeeSlot(attendeeId);
 
@@ -163,16 +157,12 @@ export default class Meeting extends EventEmitter<MeetingEvent> {
 
       const attendee = new Attendee(attendeeId, sendTransport, receiveTransport);
 
-      attendee.once("error", () => {
-        this.emit("attendeeError", attendee.id);
-      });
-
       this._attendees.set(attendeeId, attendee);
 
       return {
         status: "success",
         data: {
-          sendTransport, receiveTransport
+          attendee, sendTransport, receiveTransport
         }
       };
     } catch (error) {

@@ -100,13 +100,6 @@ class GuggleWeedApplication {
 
       const meeting = await this._meetingRepository.create(username);
 
-      meeting.on("attendeeError", (attendeeId) => {
-        this._eventService.publish("attendeeError", {
-          meetingId: meeting.id,
-          attendeeId: attendeeId
-        });
-      });
-
       response.json({
         status: "success",
         data: {
@@ -163,7 +156,14 @@ class GuggleWeedApplication {
         return;
       }
 
-      const { sendTransport, receiveTransport } = joiningResult.data;
+      const { attendee, sendTransport, receiveTransport } = joiningResult.data;
+
+      attendee.on("error", () => {
+        this._eventService.publish("attendeeError", {
+          meetingId: meeting.id,
+          attendeeId: attendee.id
+        });
+      });
 
       response.json({
         status: "success",
