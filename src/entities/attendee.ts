@@ -1,6 +1,6 @@
 import EventEmitter from "events";
 import { types } from "mediasoup";
-import { Result } from "./utils/result";
+import { Result } from "../utils/result";
 
 export type TransportType = "send" | "receive";
 export type ProducerType = "video" | "audio" | "screen-video" | "screen-audio";

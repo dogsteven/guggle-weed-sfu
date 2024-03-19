@@ -27,11 +27,10 @@ export default class WorkerRepositoryImplementation implements WorkerRepository 
     return new WorkerRepositoryImplementation(workers);
   }
 
-  public get worker(): types.Worker {
+  public pickWorker(): types.Worker {
     const worker = this._workers[this._currentWorkerIndex];
 
-    this._currentWorkerIndex += 1;
-    this._currentWorkerIndex %= this._workers.length;
+    this._currentWorkerIndex = (this._currentWorkerIndex + 1) % this._workers.length;
 
     return worker;
   }

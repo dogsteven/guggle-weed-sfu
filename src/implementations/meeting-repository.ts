@@ -1,4 +1,4 @@
-import { Result } from "../entities/utils/result";
+import { Result } from "../utils/result";
 import Meeting from "../entities/meeting";
 import WorkerRepository from "../abstractions/worker-repository";
 import MeetingRepository from "../abstractions/meeting-repository";
@@ -16,7 +16,7 @@ export default class MeetingRepositoryImplementation implements MeetingRepositor
   }
 
   public async create(hostId: any): Promise<Meeting> {
-    const meeting = await Meeting.create(v4(), hostId, this._workerRepository.worker);
+    const meeting = await Meeting.create(v4(), hostId, this._workerRepository.pickWorker());
 
     this._meetings.set(meeting.id, meeting);
 

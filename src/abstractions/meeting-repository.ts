@@ -1,4 +1,4 @@
-import { Result } from "../entities/utils/result";
+import { Result } from "../utils/result";
 import Meeting from "../entities/meeting";
 
 export default interface MeetingRepository {

@@ -1,7 +1,7 @@
 import { types } from "mediasoup";
 import Attendee, { ProducerType, TransportType } from "./attendee";
 import mediasoupConfiguration from "../configurations/mediasoupConfiguration";
-import { Result } from "./utils/result";
+import { Result } from "../utils/result";
 
 export default class Meeting {
   public readonly id: any;

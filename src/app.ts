@@ -1,26 +1,27 @@
-import fs from "fs";
-import path from "path";
+// import fs from "fs";
+// import path from "path";
 import { createContainer, asValue, asClass, InjectionMode } from "awilix";
 import express, { Application as ExpressApplication } from "express";
-import { createServer as createHttpsServer, Server as HttpsServer } from "https";
+import { createServer as createHttpServer, Server as HttpServer } from "http";
 import WorkerRepositoryImplementation from "./implementations/worker-repository";
 import MeetingRepositoryImplementation from "./implementations/meeting-repository";
 import EventService from "./abstractions/event-service";
 import { ProducerType, TransportType } from "./entities/attendee";
 import { types } from "mediasoup";
+import cors from "cors";
 import MeetingRepository from "./abstractions/meeting-repository";
 import EventServiceImplementation from "./implementations/event-service";
 import serverConfiguration from "./configurations/serverConfiguration";
 
 class GuggleWeedApplication {
   private readonly _expressApplication: ExpressApplication;
-  private readonly _httpsServer: HttpsServer;
+  private readonly _httpsServer: HttpServer;
   private readonly _eventService: EventService;
   private readonly _meetingRepository: MeetingRepository;
 
   public constructor(services: {
     expressApplication: ExpressApplication,
-    httpsServer: HttpsServer,
+    httpsServer: HttpServer,
     eventService: EventService,
     meetingRepository: MeetingRepository
   }) {
@@ -38,10 +39,7 @@ class GuggleWeedApplication {
 
     const expressApplication = express();
 
-    const httpsServer = createHttpsServer({
-      key: fs.readFileSync(path.resolve(__dirname, "../ssl/key.pem"), "utf-8"),
-      cert: fs.readFileSync(path.resolve(__dirname, "../ssl/cert.pem"), "utf-8")
-    }, expressApplication);
+    const httpsServer = createHttpServer(expressApplication);
 
     const eventService = new EventServiceImplementation();
 
@@ -72,6 +70,14 @@ class GuggleWeedApplication {
 
     await application.boot();
     await application.listen();
+  }
+
+  private bootMiddlewares() {
+    this._expressApplication.use(cors({
+      origin: `${serverConfiguration.mediaBroker.host}:${serverConfiguration.mediaBroker.port}`,
+      methods: "GET,POST",
+      optionsSuccessStatus: 200
+    }));
   }
 
   private bootMeetingSection() {
@@ -192,9 +198,9 @@ class GuggleWeedApplication {
       });
     });
 
-    this._expressApplication.post("/meetings/:meetingIds/connect", async (request, response) => {
+    this._expressApplication.post("/meetings/:meetingId/connect", async (request, response) => {
       const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingIds;
+      const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
 
@@ -470,16 +476,17 @@ class GuggleWeedApplication {
     });
   }
 
-  public async boot() {
+  private async boot() {
+    this.bootMiddlewares();
     this.bootMeetingSection();
     this.bootAttendeeSection();
     this.bootProducerSection();
     this.bootConsumerSection();
   }
 
-  public async listen() {
+  private async listen() {
     this._httpsServer.listen(serverConfiguration.server.listenPort, () => {
-      console.log(`Server is running at https://${serverConfiguration.server.listenIp}:${serverConfiguration.server.listenPort}`);
+      console.log(`Server is running at http://${serverConfiguration.server.listenIp}:${serverConfiguration.server.listenPort}`);
     });
   }
 }
