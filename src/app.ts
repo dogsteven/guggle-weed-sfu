@@ -75,7 +75,7 @@ class GuggleWeedApplication {
   }
 
   private bootMeetingSection() {
-    this._expressApplication.get("/meetings/:meetingId/producerIds", async (request, response) => {
+    this._expressApplication.get("/meetings/:meetingId", async (request, response) => {
       const meetingId = request.params.meetingId;
 
       const meetingResult = this._meetingRepository.get(meetingId);
@@ -90,7 +90,7 @@ class GuggleWeedApplication {
       response.json({
         status: "success",
         data: {
-          producerIds: meeting.producerIds
+          attendees: meeting.attendees
         }
       });
     });

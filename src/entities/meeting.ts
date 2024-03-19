@@ -14,8 +14,11 @@ export default class Meeting {
     return this._router.rtpCapabilities;
   }
 
-  public get producerIds(): string[] {
-    return Array.from(this._attendees.values()).flatMap((attendee) => attendee.producerIds);
+  public get attendees(): { attendeeId: any, producerIds: string[] }[] {
+    return Array.from(this._attendees.values()).map((attendee) => ({
+      attendeeId: attendee.id,
+      producerIds: attendee.producerIds
+    }));
   }
 
   private constructor(id: any, hostId: any, router: types.Router) {
