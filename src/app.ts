@@ -271,7 +271,10 @@ class GuggleWeedApplication {
       });
 
       response.json({
-        producerId: producer.id
+        status: "success",
+        data: {
+          producerId: producer.id
+        }
       });
     });
 
