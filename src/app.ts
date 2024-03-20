@@ -54,7 +54,7 @@ class GuggleWeedApplication {
     });
 
     container.register({
-      eventService: asClass(EventServiceImplementation),
+      eventService: asClass(EventServiceImplementation).singleton(),
       meetingRepository: asClass(MeetingRepositoryImplementation).singleton()
     });
 
