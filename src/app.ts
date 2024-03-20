@@ -108,6 +108,15 @@ class GuggleWeedApplication {
 
       const meeting = await this._meetingRepository.create(username);
 
+      this._eventService.publish("guggle-weed-event", {
+        event: "meetingStarted",
+        payload: {
+          meetingId: meeting.id,
+          hostId: username,
+          ocurredAt: Date.now()
+        }
+      });
+
       response.json({
         status: "success",
         data: {
@@ -141,6 +150,13 @@ class GuggleWeedApplication {
 
       if (endingResult.status === "success") {
         this._meetingRepository.delete(meeting.id);
+        this._eventService.publish("guggle-weed-event", {
+          event: "meetingEnded",
+          payload: {
+            meetingId: meeting.id,
+            occurredAt: Date.now()
+          }
+        });
       }
 
       response.json(endingResult);
@@ -171,13 +187,31 @@ class GuggleWeedApplication {
       const { attendee, sendTransport, receiveTransport } = joiningResult.data;
 
       attendee.once("error", () => {
-        this._eventService.publish({
+        this._eventService.publish("guggle-weed-sfu", {
           event: "attendeeError",
           payload: {
             meetingId: meeting.id,
             attendeId: attendee.id
           }
         });
+
+        this._eventService.publish("guggle-weed-event", {
+          event: "attendeeError",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            occurredAt: Date.now()
+          }
+        });
+      });
+
+      this._eventService.publish("guggle-weed-event", {
+        event: "attendeeJoined",
+        payload: {
+          meetingId: meeting.id,
+          attendeeId: username,
+          occurredAt: Date.now()
+        }
       });
 
       response.json({
@@ -235,6 +269,17 @@ class GuggleWeedApplication {
 
       const leavingResult = meeting.removeAttendee(username);
 
+      if (leavingResult.status === "success") {
+        this._eventService.publish("guggle-weed-event", {
+          event: "attendeeLeft",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            occurredAt: Date.now()
+          }
+        });
+      }
+
       response.json(leavingResult);
     });
   }
@@ -265,7 +310,7 @@ class GuggleWeedApplication {
       const producer = producerResult.data;
 
       producer.observer.once("close", () => {
-        this._eventService.publish({
+        this._eventService.publish("guggle-weed-sfu", {
           event: "producerClosed",
           payload: {
             meetingId: meeting.id,
@@ -274,10 +319,20 @@ class GuggleWeedApplication {
             producerId: producer.id
           }
         });
+
+        this._eventService.publish("guggle-weed-event", {
+          event: "producerClosed",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            producerType: producerType,
+            occurredAt: Date.now()
+          }
+        });
       });
 
       producer.observer.on("pause", () => {
-        this._eventService.publish({
+        this._eventService.publish("guggle-weed-sfu", {
           event: "producerPaused",
           payload: {
             meetingId: meeting.id,
@@ -286,10 +341,20 @@ class GuggleWeedApplication {
             producerId: producer.id
           }
         });
+
+        this._eventService.publish("guggle-weed-event", {
+          event: "producerPaused",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            producerType: producerType,
+            occurredAt: Date.now()
+          }
+        });
       });
 
       producer.observer.on("resume", () => {
-        this._eventService.publish({
+        this._eventService.publish("guggle-weed-sfu", {
           event: "producerResumed",
           payload: {
             meetingId: meeting.id,
@@ -298,6 +363,26 @@ class GuggleWeedApplication {
             producerId: producer.id
           }
         });
+
+        this._eventService.publish("guggle-weed-event", {
+          event: "producerResumed",
+          payload: {
+            meetingId: meeting.id,
+            attendeeId: username,
+            producerType: producerType,
+            occurredAt: Date.now()
+          }
+        });
+      });
+
+      this._eventService.publish("guggle-weed-event", {
+        event: "mediaProduced",
+        payload: {
+          meetingId: meeting.id,
+          attendeeId: username,
+          producerType: producerType,
+          occurredAt: Date.now()
+        }
       });
 
       response.json({
@@ -395,7 +480,7 @@ class GuggleWeedApplication {
       const consumer = consumerResult.data;
 
       consumer.observer.on("close", () => {
-        this._eventService.publish({
+        this._eventService.publish("guggle-weed-sfu", {
           event: "consumerClosed",
           payload: {
             meetingId: meeting.id,
@@ -406,7 +491,7 @@ class GuggleWeedApplication {
       });
 
       consumer.observer.on("pause", () => {
-        this._eventService.publish({
+        this._eventService.publish("guggle-weed-sfu", {
           event: "consumerPaused",
           payload: {
             meetingId: meeting.id,
@@ -417,7 +502,7 @@ class GuggleWeedApplication {
       });
 
       consumer.observer.on("resume", () => {
-        this._eventService.publish({
+        this._eventService.publish("guggle-weed-sfu", {
           event: "consumerResumed",
           payload: {
             meetingId: meeting.id,

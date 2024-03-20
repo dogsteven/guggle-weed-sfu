@@ -4,5 +4,5 @@ export type Message = {
 }
 
 export default interface EventService {
-  publish(message: Message): void
+  publish(queue: string, message: Message): void
 }
