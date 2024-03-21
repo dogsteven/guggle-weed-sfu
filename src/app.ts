@@ -108,15 +108,6 @@ class GuggleWeedApplication {
 
       const meeting = await this._meetingRepository.create(username);
 
-      this._eventService.publish("guggle-weed-event", {
-        event: "meetingStarted",
-        payload: {
-          meetingId: meeting.id,
-          hostId: username,
-          ocurredAt: Date.now()
-        }
-      });
-
       response.json({
         status: "success",
         data: {
@@ -150,13 +141,6 @@ class GuggleWeedApplication {
 
       if (endingResult.status === "success") {
         this._meetingRepository.delete(meeting.id);
-        this._eventService.publish("guggle-weed-event", {
-          event: "meetingEnded",
-          payload: {
-            meetingId: meeting.id,
-            occurredAt: Date.now()
-          }
-        });
       }
 
       response.json(endingResult);
@@ -194,24 +178,6 @@ class GuggleWeedApplication {
             attendeId: attendee.id
           }
         });
-
-        this._eventService.publish("guggle-weed-event", {
-          event: "attendeeError",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            occurredAt: Date.now()
-          }
-        });
-      });
-
-      this._eventService.publish("guggle-weed-event", {
-        event: "attendeeJoined",
-        payload: {
-          meetingId: meeting.id,
-          attendeeId: username,
-          occurredAt: Date.now()
-        }
       });
 
       response.json({
@@ -269,17 +235,6 @@ class GuggleWeedApplication {
 
       const leavingResult = meeting.removeAttendee(username);
 
-      if (leavingResult.status === "success") {
-        this._eventService.publish("guggle-weed-event", {
-          event: "attendeeLeft",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            occurredAt: Date.now()
-          }
-        });
-      }
-
       response.json(leavingResult);
     });
   }
@@ -308,82 +263,6 @@ class GuggleWeedApplication {
       }
 
       const producer = producerResult.data;
-
-      producer.observer.once("close", () => {
-        this._eventService.publish("guggle-weed-sfu", {
-          event: "producerClosed",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            producerType: producerType,
-            producerId: producer.id
-          }
-        });
-
-        this._eventService.publish("guggle-weed-event", {
-          event: "producerClosed",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            producerType: producerType,
-            occurredAt: Date.now()
-          }
-        });
-      });
-
-      producer.observer.on("pause", () => {
-        this._eventService.publish("guggle-weed-sfu", {
-          event: "producerPaused",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            producerType: producerType,
-            producerId: producer.id
-          }
-        });
-
-        this._eventService.publish("guggle-weed-event", {
-          event: "producerPaused",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            producerType: producerType,
-            occurredAt: Date.now()
-          }
-        });
-      });
-
-      producer.observer.on("resume", () => {
-        this._eventService.publish("guggle-weed-sfu", {
-          event: "producerResumed",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            producerType: producerType,
-            producerId: producer.id
-          }
-        });
-
-        this._eventService.publish("guggle-weed-event", {
-          event: "producerResumed",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            producerType: producerType,
-            occurredAt: Date.now()
-          }
-        });
-      });
-
-      this._eventService.publish("guggle-weed-event", {
-        event: "mediaProduced",
-        payload: {
-          meetingId: meeting.id,
-          attendeeId: username,
-          producerType: producerType,
-          occurredAt: Date.now()
-        }
-      });
 
       response.json({
         status: "success",

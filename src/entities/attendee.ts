@@ -41,10 +41,6 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
   }
 
   private static inititalizeTransport(transport: types.WebRtcTransport, listener: () => void) {
-    transport.once("routerclose", () => {
-      listener();
-    });
-
     transport.on("dtlsstatechange", (state) => {
       if (state === "failed" || state === "closed") {
         listener();
@@ -157,6 +153,26 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     }
   }
 
+  public closeProducer(producerType: ProducerType): Result<any> {
+    if (!this._producers.has(producerType)) {
+      return {
+        status: "failed",
+        message: `There is no producer of type ${producerType} at the moment`
+      };
+    }
+
+    const producer = this._producers.get(producerType);
+    
+    producer.close();
+
+    this._producers.delete(producerType);
+
+    return {
+      status: "success",
+      data: {}
+    };
+  }
+
   public async pauseProducer(producerType: ProducerType): Promise<Result<any>> {
     try {
       if (!this._producers.has(producerType)) {
@@ -167,6 +183,13 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
       }
 
       const producer = this._producers.get(producerType);
+
+      if (producer.paused) {
+        return {
+          status: "failed",
+          message: `This producer is already paused`
+        };
+      }
 
       await producer.pause();
 
@@ -193,6 +216,13 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
 
       const producer = this._producers.get(producerType);
 
+      if (!producer.paused) {
+        return {
+          status: "failed",
+          message: `This producer is not paused yet`
+        };
+      }
+
       await producer.resume();
 
       return {
@@ -205,22 +235,6 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
         message: error
       };
     }
-  }
-
-
-  public closeProducer(producerType: ProducerType): Result<any> {
-    if (!this._producers.has(producerType)) {
-      return {
-        status: "failed",
-        message: `There is no producer of type ${producerType} at the moment`
-      };
-    }
-
-    const producer = this._producers.get(producerType);
-    
-    producer.close();
-
-    this._producers.delete(producerType);
   }
 
   public async consumeMedia(producerId: string, rtpCapabilities: types.RtpCapabilities): Promise<Result<types.Consumer>> {

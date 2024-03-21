@@ -150,6 +150,7 @@ export default class Meeting {
       const receiveTransportResult = await this.createWebRtcTransport();
 
       if (receiveTransportResult.status === "failed") {
+        sendTransportResult.data.close();
         this.returnAttendeeSlot(attendeeId);
 
         return receiveTransportResult;
@@ -234,6 +235,19 @@ export default class Meeting {
     return await attendee.produceMedia(producerType, rtpParameters);
   }
 
+  public closeProducer(attendeeId: any, producerType: ProducerType): Result<any> {
+    if (!this._attendees.has(attendeeId)) {
+      return {
+        status: "failed",
+        message: `There is no attendee ${attendeeId} in this meeting at the moment`
+      };
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    return attendee.closeProducer(producerType);
+  }
+
   public async pauseProducer(attendeeId: any, producerType: ProducerType): Promise<Result<any>> {
     if (!this._attendees.has(attendeeId)) {
       return {
@@ -258,19 +272,6 @@ export default class Meeting {
     const attendee = this._attendees.get(attendeeId);
 
     return await attendee.resumeProducer(producerType);
-  }
-
-  public closeProducer(attendeeId: any, producerType: ProducerType): Result<any> {
-    if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
-    }
-
-    const attendee = this._attendees.get(attendeeId);
-
-    return attendee.closeProducer(producerType);
   }
   /*
   END PRODUCER SECTION
