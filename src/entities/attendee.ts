@@ -104,7 +104,6 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
       });
 
       if (!producer) {
-        this.returnProducerSlot(producerType);
         throw "An unexpected error ocurred during creating a producer";
       }
 
