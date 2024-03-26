@@ -1,8 +1,7 @@
-import { Result } from "../utils/result";
 import Meeting from "../entities/meeting";
 
 export default interface MeetingRepository {
   create(hostId: any): Promise<Meeting>;
-  get(id: any): Result<Meeting>;
+  get(id: any): Meeting;
   delete(id: any): void;
 }

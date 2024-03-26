@@ -1,4 +1,3 @@
-import { Result } from "../utils/result";
 import Meeting from "../entities/meeting";
 import WorkerRepository from "../abstractions/worker-repository";
 import MeetingRepository from "../abstractions/meeting-repository";
@@ -23,18 +22,12 @@ export default class MeetingRepositoryImplementation implements MeetingRepositor
     return meeting;
   }
 
-  public get(id: any): Result<Meeting> {
+  public get(id: any): Meeting {
     if (!this._meetings.has(id)) {
-      return {
-        status: "failed",
-        message: `There is no meeting with id ${id}`
-      };
+      throw `There is no meeting with id ${id}`;
     }
 
-    return {
-      status: "success",
-      data: this._meetings.get(id)
-    };
+    return this._meetings.get(id);
   }
 
   public delete(id: any) {

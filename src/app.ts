@@ -11,6 +11,7 @@ import MeetingRepository from "./abstractions/meeting-repository";
 import EventServiceImplementation from "./implementations/event-service";
 import serverConfiguration from "./configurations/serverConfiguration";
 import { createClient } from "redis";
+import { wrapResult, wrapResultAsync, wrapVoid, wrapVoidAsync } from "./utils/result";
 
 class GuggleWeedApplication {
   private readonly _expressApplication: ExpressApplication;
@@ -84,105 +85,68 @@ class GuggleWeedApplication {
 
   private bootMeetingSection() {
     this._expressApplication.get("/meetings/:meetingId", async (request, response) => {
-      const meetingId = request.params.meetingId;
+      response.json(wrapResult(() => {
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
-
-      const meeting = meetingResult.data;
-
-      response.json({
-        status: "success",
-        data: {
+        return {
           attendees: meeting.attendees
-        }
-      });
+        };
+      }));
     });
 
     this._expressApplication.post("/meetings/start", async (request, response) => {
-      const username = request.headers["x-username"] as string;
+      response.json(await wrapResultAsync(async () => {
+        const username = request.headers["x-username"] as string;
 
-      const meeting = await this._meetingRepository.create(username);
+        const meeting = await this._meetingRepository.create(username);
 
-      response.json({
-        status: "success",
-        data: {
+        return {
           meetingId: meeting.id
-        }
-      });
+        };
+      }));
     });
 
     this._expressApplication.post("/meetings/:meetingId/end", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(wrapVoid(() => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        if (meeting.hostId !== username) {
+          throw `You don't have permission to end this meeting`;
+        }
 
-      const meeting = meetingResult.data;
+        meeting.end();
 
-      if (meeting.hostId !== username) {
-        response.json({
-          status: "failed",
-          message: `You don't have permission to end this meeting`
-        });
-        return;
-      }
-
-      const endingResult = meeting.end();
-
-      if (endingResult.status === "success") {
         this._meetingRepository.delete(meeting.id);
-      }
-
-      response.json(endingResult);
+      }));
     });
   }
 
   private bootAttendeeSection() {
     this._expressApplication.post("/meetings/:meetingId/join", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(await wrapResultAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { attendee, sendTransport, receiveTransport } = await meeting.addAttendee(username);
 
-      const meeting = meetingResult.data;
-
-      const joiningResult = await meeting.addAttendee(username);
-
-      if (joiningResult.status === "failed") {
-        response.json(joiningResult);
-        return;
-      }
-
-      const { attendee, sendTransport, receiveTransport } = joiningResult.data;
-
-      attendee.once("error", () => {
-        this._eventService.publish("guggle-weed-sfu", {
-          event: "attendeeError",
-          payload: {
-            meetingId: meeting.id,
-            attendeId: attendee.id
-          }
+        attendee.once("error", () => {
+          this._eventService.publish("guggle-weed-sfu", {
+            event: "attendeeError",
+            payload: {
+              meetingId: meeting.id,
+              attendeId: attendee.id
+            }
+          });
         });
-      });
 
-      response.json({
-        status: "success",
-        data: {
+        return {
           routerRtpCapabilities: meeting.routerRtpCapabilities,
           sendTransport: {
             id: sendTransport.id,
@@ -196,249 +160,170 @@ class GuggleWeedApplication {
             iceCandidates: receiveTransport.iceCandidates,
             dtlsParameters: receiveTransport.dtlsParameters
           },
-        }
-      });
+        };
+      }));
     });
 
     this._expressApplication.post("/meetings/:meetingId/connect", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(await wrapVoidAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { transportType, dtlsParameters } = request.body as { transportType: TransportType, dtlsParameters: types.DtlsParameters };
 
-      const meeting = meetingResult.data;
-
-      const { transportType, dtlsParameters } = request.body as { transportType: TransportType, dtlsParameters: types.DtlsParameters };
-
-      const connectingResult = await meeting.connectTransport(username, transportType, dtlsParameters);
-
-      response.json(connectingResult);
+        await meeting.connectTransport(username, transportType, dtlsParameters);
+      }));
     });
 
     this._expressApplication.post("/meetings/:meetingId/leave", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId
+      response.json(wrapVoid(() => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
-
-      const meeting = meetingResult.data;
-
-      const leavingResult = meeting.removeAttendee(username);
-
-      response.json(leavingResult);
+        meeting.removeAttendee(username)
+      }));
     });
   }
 
   private bootProducerSection() {
     this._expressApplication.post("/meetings/:meetingId/produceMedia", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(await wrapResultAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { appData: { producerType }, rtpParameters } = request.body as { appData: { producerType: ProducerType }, rtpParameters: types.RtpParameters };
 
-      const meeting = meetingResult.data;
+        const producer = await meeting.produceMedia(username, producerType, rtpParameters);
 
-      const { appData: { producerType }, rtpParameters } = request.body as { appData: { producerType: ProducerType }, rtpParameters: types.RtpParameters };
-
-      const producerResult = await meeting.produceMedia(username, producerType, rtpParameters);
-
-      if (producerResult.status === "failed") {
-        response.json(producerResult);
-        return;
-      }
-
-      const producer = producerResult.data;
-
-      response.json({
-        status: "success",
-        data: {
+        return {
           producerId: producer.id
-        }
-      });
+        };
+      }));
     });
 
     this._expressApplication.post("/meetings/:meetingId/closeProducer", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(wrapVoid(() => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { producerType } = request.body as { producerType: ProducerType };
 
-      const meeting = meetingResult.data;
-
-      const { producerType } = request.body as { producerType: ProducerType };
-
-      const closingResult = meeting.closeProducer(username, producerType);
-
-      response.json(closingResult);
+        meeting.closeProducer(username, producerType);
+      }));
     });
 
     this._expressApplication.post("/meetings/:meetingId/pauseProducer", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(await wrapVoidAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { producerType } = request.body as { producerType: ProducerType };
 
-      const meeting = meetingResult.data;
-
-      const { producerType } = request.body as { producerType: ProducerType };
-
-      const pausingResult = await meeting.pauseProducer(username, producerType);
-
-      response.json(pausingResult);
+        await meeting.pauseProducer(username, producerType);
+      }));
     })
 
     this._expressApplication.post("/meetings/:meetingId/resumeProducer", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(await wrapVoidAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { producerType } = request.body as { producerType: ProducerType };
 
-      const meeting = meetingResult.data;
-
-      const { producerType } = request.body as { producerType: ProducerType };
-
-      const resumingResult = await meeting.resumeProducer(username, producerType);
-
-      response.json(resumingResult);
+        await meeting.resumeProducer(username, producerType);
+      }));
     });
   }
 
   private bootConsumerSection() {
     this._expressApplication.post("/meetings/:meetingId/consumeMedia", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(await wrapResultAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { producerId, rtpCapabilities } = request.body as { producerId: string, rtpCapabilities: types.RtpCapabilities };
 
-      const meeting = meetingResult.data;
+        const consumer = await meeting.consumeMedia(username, producerId, rtpCapabilities);
 
-      const { producerId, rtpCapabilities } = request.body as { producerId: string, rtpCapabilities: types.RtpCapabilities };
-
-      const consumerResult = await meeting.consumeMedia(username, producerId, rtpCapabilities);
-
-      if (consumerResult.status === "failed") {
-        response.json(consumerResult);
-        return;
-      }
-
-      const consumer = consumerResult.data;
-
-      consumer.observer.on("close", () => {
-        this._eventService.publish("guggle-weed-sfu", {
-          event: "consumerClosed",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            consumerId: consumer.id
-          }
+        consumer.observer.on("close", () => {
+          this._eventService.publish("guggle-weed-sfu", {
+            event: "consumerClosed",
+            payload: {
+              meetingId: meeting.id,
+              attendeeId: username,
+              consumerId: consumer.id
+            }
+          });
         });
-      });
 
-      consumer.observer.on("pause", () => {
-        this._eventService.publish("guggle-weed-sfu", {
-          event: "consumerPaused",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            consumerId: consumer.id
-          }
+        consumer.observer.on("pause", () => {
+          this._eventService.publish("guggle-weed-sfu", {
+            event: "consumerPaused",
+            payload: {
+              meetingId: meeting.id,
+              attendeeId: username,
+              consumerId: consumer.id
+            }
+          });
         });
-      });
 
-      consumer.observer.on("resume", () => {
-        this._eventService.publish("guggle-weed-sfu", {
-          event: "consumerResumed",
-          payload: {
-            meetingId: meeting.id,
-            attendeeId: username,
-            consumerId: consumer.id
-          }
+        consumer.observer.on("resume", () => {
+          this._eventService.publish("guggle-weed-sfu", {
+            event: "consumerResumed",
+            payload: {
+              meetingId: meeting.id,
+              attendeeId: username,
+              consumerId: consumer.id
+            }
+          });
         });
-      });
 
-      response.json({
-        status: "success",
-        data: {
+        return {
           id: consumer.id,
           kind: consumer.kind,
           rtpParameters: consumer.rtpParameters
-        }
-      });
+        };
+      }));
     });
 
     this._expressApplication.post("/meetings/:meetingId/pauseConsumer", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
+      response.json(await wrapVoidAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
 
-      const meetingResult = this._meetingRepository.get(meetingId);
+        const meeting = this._meetingRepository.get(meetingId);
 
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
+        const { consumerId } = request.body as { consumerId: string };
 
-      const meeting = meetingResult.data;
-
-      const { consumerId } = request.body as { consumerId: string };
-
-      const pausingResult = await meeting.pauseConsumer(username, consumerId);
-
-      response.json(pausingResult);
+        await meeting.pauseConsumer(username, consumerId);
+      }));
     });
 
     this._expressApplication.post("/meetings/:meetingId/resumeConsumer", async (request, response) => {
-      const username = request.headers["x-username"] as string;
-      const meetingId = request.params.meetingId;
-
-      const meetingResult = this._meetingRepository.get(meetingId);
-
-      if (meetingResult.status === "failed") {
-        response.json(meetingResult);
-        return;
-      }
-
-      const meeting = meetingResult.data;
-
-      const { consumerId } = request.body as { consumerId: string };
-
-      const resumingResult = await meeting.resumeConsumer(username, consumerId);
-
-      response.json(resumingResult);
+      response.json(await wrapVoidAsync(async () => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
+  
+        const meeting = this._meetingRepository.get(meetingId);
+  
+        const { consumerId } = request.body as { consumerId: string };
+  
+        await meeting.resumeConsumer(username, consumerId);
+      }));
     });
   }
 

@@ -1,7 +1,6 @@
 import { types } from "mediasoup";
 import Attendee, { ProducerType, TransportType } from "./attendee";
 import mediasoupConfiguration from "../configurations/mediasoupConfiguration";
-import { Result } from "../utils/result";
 
 export default class Meeting {
   public readonly id: any;
@@ -39,12 +38,9 @@ export default class Meeting {
     return new Meeting(id, hostId, router);
   }
 
-  public end(): Result<any> {
+  public end(): void {
     if (this._ended) {
-      return {
-        status: "failed",
-        message: `This meeting has been ended`
-      };
+      throw `This meeting has been ended`;
     }
 
     this._ended = true;
@@ -54,71 +50,45 @@ export default class Meeting {
     }
 
     this._router.close();
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
 
   
   /*
   BEGIN ATTENDEE SECTION
   */
-  private async createWebRtcTransport(): Promise<Result<types.WebRtcTransport>> {
-    try {
-      const { maxIncomingBitrate, initialAvailableOutgoingBitrate } = mediasoupConfiguration.mediasoup.webRtcTransport
+  private async createWebRtcTransport(): Promise<types.WebRtcTransport> {
+    const { maxIncomingBitrate, initialAvailableOutgoingBitrate } = mediasoupConfiguration.mediasoup.webRtcTransport
 
-      const transport = await this._router.createWebRtcTransport({
-        listenInfos: mediasoupConfiguration.mediasoup.webRtcTransport.listenInfos,
-        enableUdp: true,
-        enableTcp: true,
-        preferUdp: true,
-        iceConsentTimeout: 20,
-        initialAvailableOutgoingBitrate: initialAvailableOutgoingBitrate
-      });
+    const transport = await this._router.createWebRtcTransport({
+      listenInfos: mediasoupConfiguration.mediasoup.webRtcTransport.listenInfos,
+      enableUdp: true,
+      enableTcp: true,
+      preferUdp: true,
+      iceConsentTimeout: 20,
+      initialAvailableOutgoingBitrate: initialAvailableOutgoingBitrate
+    });
 
-      if (!transport) {
-        return {
-          status: "failed",
-          message: `Cannot create transport`
-        };
-      }
-
-      if (maxIncomingBitrate) {
-        try {
-          await transport.setMaxIncomingBitrate(maxIncomingBitrate);
-        } catch (error) {
-          console.error(error);
-        }
-      }
-
-      return {
-        status: "success",
-        data: transport
-      };
-    } catch (error) {
-      return {
-        status: "failed",
-        message: error
-      };
+    if (!transport) {
+      throw `Cannot create transport`;
     }
+
+    if (maxIncomingBitrate) {
+      try {
+        await transport.setMaxIncomingBitrate(maxIncomingBitrate);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    return transport;
   }
 
-  private reserveAttendeeSlot(attendeeId: any): Result<any> {
+  private reserveAttendeeSlot(attendeeId: any): void {
     if (this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `Attendee with id ${attendeeId} has been joined this meeting`
-      };
+      throw `Attendee with id ${attendeeId} has been joined this meeting`;
     }
 
     this._attendees.set(attendeeId, null);
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
 
   private returnAttendeeSlot(attendeeId: any) {
@@ -131,33 +101,20 @@ export default class Meeting {
     }
   }
 
-  public async addAttendee(attendeeId: any): Promise<Result<{ attendee: Attendee, sendTransport: types.WebRtcTransport, receiveTransport: types.WebRtcTransport }>> {
+  public async addAttendee(attendeeId: any): Promise<{ attendee: Attendee, sendTransport: types.WebRtcTransport, receiveTransport: types.WebRtcTransport }> {
+    this.reserveAttendeeSlot(attendeeId);
+
     try {
-      const reservationResult = this.reserveAttendeeSlot(attendeeId);
+      const sendTransport = await this.createWebRtcTransport();
 
-      if (reservationResult.status === "failed") {
-        return reservationResult;
+      let receiveTransport: types.WebRtcTransport;
+
+      try {
+        receiveTransport = await this.createWebRtcTransport();
+      } catch (error) {
+        sendTransport.close();
+        throw error;
       }
-
-      const sendTransportResult = await this.createWebRtcTransport();
-
-      if (sendTransportResult.status === "failed") {
-        this.returnAttendeeSlot(attendeeId);
-
-        return sendTransportResult;
-      }
-
-      const receiveTransportResult = await this.createWebRtcTransport();
-
-      if (receiveTransportResult.status === "failed") {
-        sendTransportResult.data.close();
-        this.returnAttendeeSlot(attendeeId);
-
-        return receiveTransportResult;
-      }
-
-      const sendTransport = sendTransportResult.data;
-      const receiveTransport = receiveTransportResult.data;
 
       const attendee = new Attendee(attendeeId, sendTransport, receiveTransport);
 
@@ -167,41 +124,26 @@ export default class Meeting {
         this._attendees.delete(attendeeId);
       });
 
-      return {
-        status: "success",
-        data: {
-          attendee, sendTransport, receiveTransport
-        }
-      };
+      return { attendee, sendTransport, receiveTransport }
     } catch (error) {
       this.returnAttendeeSlot(attendeeId);
-      
-      return {
-        status: "failed",
-        message: error
-      };
+      throw error;
     }
   }
 
-  public async connectTransport(attendeeId: any, transportType: TransportType, dtlsParameters: types.DtlsParameters): Promise<Result<any>> {
+  public async connectTransport(attendeeId: any, transportType: TransportType, dtlsParameters: types.DtlsParameters): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
 
-    return await attendee.connectTransport(transportType, dtlsParameters);
+    await attendee.connectTransport(transportType, dtlsParameters);
   }
 
-  public removeAttendee(attendeeId: any): Result<any> {
+  public removeAttendee(attendeeId: any): void {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -209,11 +151,6 @@ export default class Meeting {
     attendee.close();
 
     this._attendees.delete(attendeeId);
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
   /*
   END ATTENDEE SECTION
@@ -222,12 +159,9 @@ export default class Meeting {
   /*
   BEGIN PRODUCER SECTION
   */
-  public async produceMedia(attendeeId: any, producerType: ProducerType, rtpParameters: types.RtpParameters): Promise<Result<types.Producer>> {
+  public async produceMedia(attendeeId: any, producerType: ProducerType, rtpParameters: types.RtpParameters): Promise<types.Producer> {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -235,43 +169,34 @@ export default class Meeting {
     return await attendee.produceMedia(producerType, rtpParameters);
   }
 
-  public closeProducer(attendeeId: any, producerType: ProducerType): Result<any> {
+  public closeProducer(attendeeId: any, producerType: ProducerType): void {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
 
-    return attendee.closeProducer(producerType);
+    attendee.closeProducer(producerType);
   }
 
-  public async pauseProducer(attendeeId: any, producerType: ProducerType): Promise<Result<any>> {
+  public async pauseProducer(attendeeId: any, producerType: ProducerType): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
 
-    return await attendee.pauseProducer(producerType);
+    await attendee.pauseProducer(producerType);
   }
 
-  public async resumeProducer(attendeeId: any, producerType: ProducerType): Promise<Result<any>> {
+  public async resumeProducer(attendeeId: any, producerType: ProducerType): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
 
-    return await attendee.resumeProducer(producerType);
+    await attendee.resumeProducer(producerType);
   }
   /*
   END PRODUCER SECTION
@@ -280,12 +205,9 @@ export default class Meeting {
   /*
   BEGIN CONSUMER SECTION
   */
-  public async consumeMedia(attendeeId: any, producerId: string, rtpCapabilities: types.RtpCapabilities): Promise<Result<types.Consumer>> {
+  public async consumeMedia(attendeeId: any, producerId: string, rtpCapabilities: types.RtpCapabilities): Promise<types.Consumer> {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -293,30 +215,24 @@ export default class Meeting {
     return await attendee.consumeMedia(producerId, rtpCapabilities);
   }
 
-  public async pauseConsumer(attendeeId: any, consumerId: string): Promise<Result<any>> {
+  public async pauseConsumer(attendeeId: any, consumerId: string): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
 
-    return await attendee.pauseConsumer(consumerId);
+    await attendee.pauseConsumer(consumerId);
   }
 
-  public async resumeConsumer(attendeeId: any, consumerId: string): Promise<Result<any>> {
+  public async resumeConsumer(attendeeId: any, consumerId: string): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      return {
-        status: "failed",
-        message: `There is no attendee ${attendeeId} in this meeting at the moment`
-      };
+      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
     }
 
     const attendee = this._attendees.get(attendeeId);
 
-    return await attendee.resumeConsumer(consumerId);
+    await attendee.resumeConsumer(consumerId);
   }
   /*
   END CONSUMER SECTION

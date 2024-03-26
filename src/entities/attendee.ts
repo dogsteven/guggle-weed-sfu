@@ -1,6 +1,5 @@
 import EventEmitter from "events";
 import { types } from "mediasoup";
-import { Result } from "../utils/result";
 
 export type TransportType = "send" | "receive";
 export type ProducerType = "video" | "audio" | "screen-video" | "screen-audio";
@@ -67,41 +66,21 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     }
   }
 
-  public async connectTransport(transportType: TransportType, dtlsParameters: types.DtlsParameters): Promise<Result<any>> {
-    try {
-      const transport = transportType === "send" ? this._sendTransport : this._receiveTransport;
+  public async connectTransport(transportType: TransportType, dtlsParameters: types.DtlsParameters): Promise<void> {
+    const transport = transportType === "send" ? this._sendTransport : this._receiveTransport;
 
-      await transport.connect({ dtlsParameters });
-
-      return {
-        status: "success",
-        data: {}
-      };
-    } catch (error) {
-      return {
-        status: "failed",
-        message: error
-      };
-    }
+    await transport.connect({ dtlsParameters });
   }
 
-  private reserveProducerSlot(producerType: ProducerType): Result<any> {
+  private reserveProducerSlot(producerType: ProducerType): void {
     if (this._producers.has(producerType)) {
-      return {
-        status: "failed",
-        message: `Producer of type ${producerType} already presents in this attendee`
-      };
+      throw `Producer of type ${producerType} already presents in this attendee`;
     }
 
     this._producers.set(producerType, null);
-
-    return {
-      status: "success",
-      data: {}
-    }
   }
 
-  private returnProducerSlot(produceType: ProducerType) {
+  private returnProducerSlot(produceType: ProducerType): void {
     if (this._producers.has(produceType)) {
       const reservation = this._producers.get(produceType);
 
@@ -111,14 +90,10 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     }
   }
 
-  public async produceMedia(producerType: ProducerType, rtpParameters: types.RtpParameters): Promise<Result<types.Producer>> {
+  public async produceMedia(producerType: ProducerType, rtpParameters: types.RtpParameters): Promise<types.Producer> {
+    this.reserveProducerSlot(producerType);
+    
     try {
-      const reservationResult = this.reserveProducerSlot(producerType);
-
-      if (reservationResult.status === "failed") {
-        return reservationResult;
-      }
-
       const kind = Attendee.getMediaKind(producerType);
 
       const producer = await this._sendTransport.produce({
@@ -130,35 +105,21 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
 
       if (!producer) {
         this.returnProducerSlot(producerType);
-
-        return {
-          status: "failed",
-          message: "An unexpected error ocurred during creating a producer"
-        };
+        throw "An unexpected error ocurred during creating a producer";
       }
 
       this._producers.set(producerType, producer);
 
-      return {
-        status: "success",
-        data: producer
-      };
+      return producer;
     } catch (error) {
       this.returnProducerSlot(producerType);
-
-      return {
-        status: "failed",
-        message: error
-      };
+      throw error;
     }
   }
 
-  public closeProducer(producerType: ProducerType): Result<any> {
+  public closeProducer(producerType: ProducerType): void {
     if (!this._producers.has(producerType)) {
-      return {
-        status: "failed",
-        message: `There is no producer of type ${producerType} at the moment`
-      };
+      throw `There is no producer of type ${producerType} at the moment`;
     }
 
     const producer = this._producers.get(producerType);
@@ -166,176 +127,89 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     producer.close();
 
     this._producers.delete(producerType);
-
-    return {
-      status: "success",
-      data: {}
-    };
   }
 
-  public async pauseProducer(producerType: ProducerType): Promise<Result<any>> {
-    try {
-      if (!this._producers.has(producerType)) {
-        return {
-          status: "failed",
-          message: `There is no producer of type ${producerType} at the moment`
-        };
-      }
-
-      const producer = this._producers.get(producerType);
-
-      if (producer.paused) {
-        return {
-          status: "failed",
-          message: `This producer is already paused`
-        };
-      }
-
-      await producer.pause();
-
-      return {
-        status: "success",
-        data: {}
-      };
-    } catch (error) {
-      return {
-        status: "failed",
-        message: error
-      };
+  public async pauseProducer(producerType: ProducerType): Promise<void> {
+    if (!this._producers.has(producerType)) {
+      throw `There is no producer of type ${producerType} at the moment`;
     }
+
+    const producer = this._producers.get(producerType);
+
+    if (producer.paused) {
+      throw `This producer is already paused`;
+    }
+
+    await producer.pause();
   }
 
-  public async resumeProducer(producerType: ProducerType): Promise<Result<any>> {
-    try {
-      if (!this._producers.has(producerType)) {
-        return {
-          status: "failed",
-          message: `There is no producer of type ${producerType} at the moment`
-        };
-      }
-
-      const producer = this._producers.get(producerType);
-
-      if (!producer.paused) {
-        return {
-          status: "failed",
-          message: `This producer is not paused yet`
-        };
-      }
-
-      await producer.resume();
-
-      return {
-        status: "success",
-        data: {}
-      };
-    } catch (error) {
-      return {
-        status: "failed",
-        message: error
-      };
+  public async resumeProducer(producerType: ProducerType): Promise<void> {
+    if (!this._producers.has(producerType)) {
+      throw `There is no producer of type ${producerType} at the moment`;
     }
+
+    const producer = this._producers.get(producerType);
+
+    if (!producer.paused) {
+      throw `This producer is not paused yet`;
+    }
+
+    await producer.resume();
   }
 
-  public async consumeMedia(producerId: string, rtpCapabilities: types.RtpCapabilities): Promise<Result<types.Consumer>> {
-    try {
-      const consumer = await this._receiveTransport.consume({
-        producerId, rtpCapabilities,
-        paused: false
-      });
+  public async consumeMedia(producerId: string, rtpCapabilities: types.RtpCapabilities): Promise<types.Consumer> {
+    const consumer = await this._receiveTransport.consume({
+      producerId, rtpCapabilities,
+      paused: false
+    });
 
-      if (!consumer) {
-        return {
-          status: "failed",
-          message: `Cannot create a consumer for producer with id ${producerId}`
-        };
-      }
-
-      if (consumer.type === "simulcast" || consumer.type === "svc") {
-        try {
-          const { scalabilityMode } = consumer.rtpParameters.encodings[0];
-          const spatialLayer = parseInt(scalabilityMode.substring(1, 2));
-          const temporalLayer = parseInt(scalabilityMode.substring(3, 4));
-          await consumer.setPreferredLayers({ spatialLayer, temporalLayer });
-        } catch (error) {
-          consumer.close();
-          return {
-            status: "failed",
-            message: error
-          };
-        }
-      }
-
-      this._consumers.set(consumer.id, consumer);
-
-      consumer.observer.once("close", () => {
-        if (this._closed) {
-          return;
-        }
-
-        this._consumers.delete(consumer.id);
-      });
-
-      return {
-        status: "success",
-        data: consumer
-      };
-    } catch (error) {
-      return {
-        status: "failed",
-        message: error
-      };
+    if (!consumer) {
+      throw `Cannot create a consumer for producer with id ${producerId}`;
     }
+
+    if (consumer.type === "simulcast" || consumer.type === "svc") {
+      try {
+        const { scalabilityMode } = consumer.rtpParameters.encodings[0];
+        const spatialLayer = parseInt(scalabilityMode.substring(1, 2));
+        const temporalLayer = parseInt(scalabilityMode.substring(3, 4));
+        await consumer.setPreferredLayers({ spatialLayer, temporalLayer });
+      } catch (error) {
+        consumer.close();
+        throw error;
+      }
+    }
+
+    this._consumers.set(consumer.id, consumer);
+
+    consumer.observer.once("close", () => {
+      if (this._closed) {
+        return;
+      }
+
+      this._consumers.delete(consumer.id);
+    });
+
+    return consumer;
   }
 
-  public async pauseConsumer(consumerId: string): Promise<Result<any>> {
-    try {
-      if (!this._consumers.has(consumerId)) {
-        return {
-          status: "failed",
-          message: `There is no consumer with id ${consumerId} at the moment`
-        };
-      }
-
-      const consumer = this._consumers.get(consumerId);
-
-      await consumer.pause();
-
-      return {
-        status: "success",
-        data: {}
-      };
-    } catch (error) {
-      return {
-        status: "failed",
-        message: error
-      };
+  public async pauseConsumer(consumerId: string): Promise<void> {
+    if (!this._consumers.has(consumerId)) {
+      throw `There is no consumer with id ${consumerId} at the moment`;
     }
+
+    const consumer = this._consumers.get(consumerId);
+
+    await consumer.pause();
   }
 
-  public async resumeConsumer(consumerId: string): Promise<Result<any>> {
-    try {
-      if (!this._consumers.has(consumerId)) {
-        return {
-          status: "failed",
-          message: `There is no consumer with id ${consumerId} at the moment`
-        };
-      }
-
-      const consumer = this._consumers.get(consumerId);
-
-      await consumer.resume();
-
-      return {
-        status: "success",
-        data: {}
-      };
-    } catch (error) {
-      return {
-        status: "failed",
-        message: error
-      };
+  public async resumeConsumer(consumerId: string): Promise<void> {
+    if (!this._consumers.has(consumerId)) {
+      throw `There is no consumer with id ${consumerId} at the moment`;
     }
+
+    const consumer = this._consumers.get(consumerId);
+
+    await consumer.resume();
   }
 
   private error() {
