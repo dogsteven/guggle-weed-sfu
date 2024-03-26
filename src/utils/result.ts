@@ -18,7 +18,10 @@ export function wrapVoid(handler: () => void): Result<{}> {
 }
 
 export function wrapVoidAsync(handler: () => Promise<void>): Promise<Result<{}>> {
-  return wrapResultAsync(() => handler().then(() => ({})));
+  return wrapResultAsync(async () => {
+    await handler();
+    return {};
+  });
 }
 
 export function wrapResult<T>(computation: () => T): Result<T> {
