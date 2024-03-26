@@ -10,26 +10,15 @@ type FailedResult = {
 
 export type Result<T> = SuccessResult<T> | FailedResult;
 
-export function wrapVoid(handler: () => void): Result<any> {
-  try {
+export function wrapVoid(handler: () => void): Result<{}> {
+  return wrapResult(() => {
     handler();
-  } catch (error) {
-    return {
-      status: "failed",
-      message: error
-    };
-  }
+    return {};
+  });
 }
 
-export async function wrapVoidAsync(handler: () => Promise<void>): Promise<Result<any>> {
-  try {
-    await handler();
-  } catch (error) {
-    return {
-      status: "failed",
-      message: error
-    };
-  }
+export function wrapVoidAsync(handler: () => Promise<void>): Promise<Result<{}>> {
+  return wrapResultAsync(() => handler().then(() => ({})));
 }
 
 export function wrapResult<T>(computation: () => T): Result<T> {
@@ -56,28 +45,6 @@ export async function wrapResultAsync<T>(computation: () => Promise<T>): Promise
     return {
       status: "failed",
       message: error  
-    };
-  }
-}
-
-export function bindResult<T>(binder: () => Result<T>): Result<T> {
-  try {
-    return binder();
-  } catch (error) {
-    return {
-      status: "failed",
-      message: error
-    };
-  }
-}
-
-export async function bindResultAsync<T>(binder: () => Promise<Result<T>>): Promise<Result<T>> {
-  try {
-    return await binder();
-  } catch (error) {
-    return {
-      status: "failed",
-      message: error
     };
   }
 }
