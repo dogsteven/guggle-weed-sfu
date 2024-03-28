@@ -12,19 +12,19 @@ export default class EventServiceImplementation implements EventService {
   }
 
   public publish(queue: string, message: Message) {
-    this.safePublish(queue, {
+    this.safePublish(queue, JSON.stringify({
       ...message,
-      id: v4()
-    });
+      timestamp: new Date(Date.now())
+    }));
   }
 
-  private async safePublish(queue: string, message: { id: string, event: string, payload: any }, times: number = 1) {
+  private async safePublish(queue: string, message: string, times: number = 1) {
     if (times > 5) {
       return;
     }
 
     try {
-      await this._redisPublisher.publish(queue, JSON.stringify(message));
+      await this._redisPublisher.publish(queue, message);
     } catch {
       setTimeout(() => {
         this.safePublish(queue, message, times + 1);
