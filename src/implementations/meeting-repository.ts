@@ -24,7 +24,7 @@ export default class MeetingRepositoryImplementation implements MeetingRepositor
 
   public get(id: any): Meeting {
     if (!this._meetings.has(id)) {
-      throw `There is no meeting with id ${id}`;
+      throw new Error(`There is no meeting with id ${id}`);
     }
 
     return this._meetings.get(id);

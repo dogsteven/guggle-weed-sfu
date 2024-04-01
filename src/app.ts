@@ -12,6 +12,7 @@ import EventServiceImplementation from "./implementations/event-service";
 import serverConfiguration from "./configurations/serverConfiguration";
 import { createClient } from "redis";
 import { wrapResult, wrapResultAsync, wrapVoid, wrapVoidAsync } from "./utils/result";
+import { json } from "body-parser";
 
 class GuggleWeedApplication {
   private readonly _expressApplication: ExpressApplication;
@@ -76,6 +77,8 @@ class GuggleWeedApplication {
   }
 
   private bootMiddlewares() {
+    this._expressApplication.use(json());
+
     this._expressApplication.use(cors({
       origin: `${serverConfiguration.mediaBroker.host}:${serverConfiguration.mediaBroker.port}`,
       methods: "GET,POST",
@@ -189,7 +192,7 @@ class GuggleWeedApplication {
         const meeting = this._meetingRepository.get(meetingId);
 
         if (meeting.hostId !== username) {
-          throw `You don't have permission to end this meeting`;
+          throw new Error(`You don't have permission to end this meeting`);
         }
 
         meeting.end();
@@ -493,6 +496,33 @@ class GuggleWeedApplication {
             rtpCapabilities: request.body.rtpCapabilities
           },
           resutl: result
+        }
+      });
+
+      response.json(result);
+    });
+
+    this._expressApplication.post("/meetings/:meetingId/closeConsumer", async (request, response) => {
+      const result = await wrapVoid(() => {
+        const username = request.headers["x-username"] as string;
+        const meetingId = request.params.meetingId;
+
+        const meeting = this._meetingRepository.get(meetingId);
+
+        const { consumerId } = request.body as { consumerId: string };
+
+        meeting.closeConsumer(username, consumerId);
+      });
+
+      this._eventService.publish("guggle-weed-action-log", {
+        event: "CloseConsumer",
+        payload: {
+          arguments: {
+            meetingId: request.params.meetingId,
+            actor: request.headers["x-username"] as string,
+            consumerId: request.body.consumerId
+          },
+          result: result
         }
       });
 

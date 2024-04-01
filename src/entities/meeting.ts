@@ -40,7 +40,7 @@ export default class Meeting {
 
   public end(): void {
     if (this._ended) {
-      throw `This meeting has been ended`;
+      throw new Error(`This meeting has been ended`);
     }
 
     this._ended = true;
@@ -69,7 +69,7 @@ export default class Meeting {
     });
 
     if (!transport) {
-      throw `Cannot create transport`;
+      throw new Error(`Cannot create transport`);
     }
 
     if (maxIncomingBitrate) {
@@ -85,7 +85,7 @@ export default class Meeting {
 
   private reserveAttendeeSlot(attendeeId: any): void {
     if (this._attendees.has(attendeeId)) {
-      throw `Attendee with id ${attendeeId} has been joined this meeting`;
+      throw new Error(`Attendee with id ${attendeeId} has been joined this meeting`);
     }
 
     this._attendees.set(attendeeId, null);
@@ -133,7 +133,7 @@ export default class Meeting {
 
   public async connectTransport(attendeeId: any, transportType: TransportType, dtlsParameters: types.DtlsParameters): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -143,7 +143,7 @@ export default class Meeting {
 
   public removeAttendee(attendeeId: any): void {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -161,7 +161,7 @@ export default class Meeting {
   */
   public async produceMedia(attendeeId: any, producerType: ProducerType, rtpParameters: types.RtpParameters): Promise<types.Producer> {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -171,7 +171,7 @@ export default class Meeting {
 
   public closeProducer(attendeeId: any, producerType: ProducerType): void {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -181,7 +181,7 @@ export default class Meeting {
 
   public async pauseProducer(attendeeId: any, producerType: ProducerType): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -191,7 +191,7 @@ export default class Meeting {
 
   public async resumeProducer(attendeeId: any, producerType: ProducerType): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -207,7 +207,7 @@ export default class Meeting {
   */
   public async consumeMedia(attendeeId: any, producerId: string, rtpCapabilities: types.RtpCapabilities): Promise<types.Consumer> {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -215,9 +215,19 @@ export default class Meeting {
     return await attendee.consumeMedia(producerId, rtpCapabilities);
   }
 
+  public closeConsumer(attendeeId: any, consumerId: string): void {
+    if (!this._attendees.has(attendeeId)) {
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
+    }
+
+    const attendee = this._attendees.get(attendeeId);
+
+    attendee.closeConsumer(consumerId);
+  }
+
   public async pauseConsumer(attendeeId: any, consumerId: string): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);
@@ -227,7 +237,7 @@ export default class Meeting {
 
   public async resumeConsumer(attendeeId: any, consumerId: string): Promise<void> {
     if (!this._attendees.has(attendeeId)) {
-      throw `There is no attendee ${attendeeId} in this meeting at the moment`;
+      throw new Error(`There is no attendee ${attendeeId} in this meeting at the moment`);
     }
 
     const attendee = this._attendees.get(attendeeId);

@@ -39,7 +39,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     });
   }
 
-  private static inititalizeTransport(transport: types.WebRtcTransport, listener: () => void) {
+  private static inititalizeTransport(transport: types.WebRtcTransport, listener: () => void): void {
     transport.on("dtlsstatechange", (state) => {
       if (state === "failed" || state === "closed") {
         listener();
@@ -74,7 +74,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
 
   private reserveProducerSlot(producerType: ProducerType): void {
     if (this._producers.has(producerType)) {
-      throw `Producer of type ${producerType} already presents in this attendee`;
+      throw new Error(`Producer of type ${producerType} already presents in this attendee`);
     }
 
     this._producers.set(producerType, null);
@@ -104,7 +104,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
       });
 
       if (!producer) {
-        throw "An unexpected error ocurred during creating a producer";
+        throw new Error("An unexpected error ocurred during creating a producer");
       }
 
       this._producers.set(producerType, producer);
@@ -118,7 +118,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
 
   public closeProducer(producerType: ProducerType): void {
     if (!this._producers.has(producerType)) {
-      throw `There is no producer of type ${producerType} at the moment`;
+      throw new Error(`There is no producer of type ${producerType} at the moment`);
     }
 
     const producer = this._producers.get(producerType);
@@ -130,13 +130,13 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
 
   public async pauseProducer(producerType: ProducerType): Promise<void> {
     if (!this._producers.has(producerType)) {
-      throw `There is no producer of type ${producerType} at the moment`;
+      throw new Error(`There is no producer of type ${producerType} at the moment`);
     }
 
     const producer = this._producers.get(producerType);
 
     if (producer.paused) {
-      throw `This producer is already paused`;
+      throw new Error(`This producer is already paused`);
     }
 
     await producer.pause();
@@ -144,13 +144,13 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
 
   public async resumeProducer(producerType: ProducerType): Promise<void> {
     if (!this._producers.has(producerType)) {
-      throw `There is no producer of type ${producerType} at the moment`;
+      throw new Error(`There is no producer of type ${producerType} at the moment`);
     }
 
     const producer = this._producers.get(producerType);
 
     if (!producer.paused) {
-      throw `This producer is not paused yet`;
+      throw new Error(`This producer is not paused yet`);
     }
 
     await producer.resume();
@@ -163,7 +163,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     });
 
     if (!consumer) {
-      throw `Cannot create a consumer for producer with id ${producerId}`;
+      throw new Error(`Cannot create a consumer for producer with id ${producerId}`);
     }
 
     if (consumer.type === "simulcast" || consumer.type === "svc") {
@@ -191,9 +191,19 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     return consumer;
   }
 
+  public closeConsumer(consumerId: string): void {
+    if (!this._consumers.has(consumerId)) {
+      throw new Error(`There is no consumer with id ${consumerId} at the moment`);
+    }
+
+    const consumer = this._consumers.get(consumerId);
+
+    consumer.close();
+  }
+
   public async pauseConsumer(consumerId: string): Promise<void> {
     if (!this._consumers.has(consumerId)) {
-      throw `There is no consumer with id ${consumerId} at the moment`;
+      throw new Error(`There is no consumer with id ${consumerId} at the moment`);
     }
 
     const consumer = this._consumers.get(consumerId);
@@ -203,7 +213,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
 
   public async resumeConsumer(consumerId: string): Promise<void> {
     if (!this._consumers.has(consumerId)) {
-      throw `There is no consumer with id ${consumerId} at the moment`;
+      throw new Error(`There is no consumer with id ${consumerId} at the moment`);
     }
 
     const consumer = this._consumers.get(consumerId);
@@ -211,7 +221,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     await consumer.resume();
   }
 
-  private error() {
+  private error(): void {
     if (this._closed) {
       return;
     }
@@ -224,7 +234,7 @@ export default class Attendee extends EventEmitter<AttendeeEvent> {
     this.emit("error");
   }
 
-  public close() {
+  public close(): void {
     if (this._closed) {
       return;
     }

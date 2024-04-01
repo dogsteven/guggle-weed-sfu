@@ -30,10 +30,10 @@ export function wrapResult<T>(computation: () => T): Result<T> {
       status: "success",
       data: computation()
     };
-  } catch (error) {
+  } catch (error: any) {
     return {
       status: "failed",
-      message: error  
+      message: error.message
     };
   }
 }
@@ -44,10 +44,10 @@ export async function wrapResultAsync<T>(computation: () => Promise<T>): Promise
       status: "success",
       data: await computation()
     };
-  } catch (error) {
+  } catch (error: any) {
     return {
       status: "failed",
-      message: error  
+      message: error.message 
     };
   }
 }
