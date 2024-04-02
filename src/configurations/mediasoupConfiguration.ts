@@ -1,32 +1,12 @@
 import os from "os";
 import { types as mediasoupTypes } from "mediasoup";
 
-const networkInterfaces = os.networkInterfaces();
-
-const getLocalIp = () => {
-  let localIp = "127.0.0.1";
-  let checkIp = true;
-
-  Object.keys(networkInterfaces).forEach((name) => {
-    for (const networkInterface of networkInterfaces[name]) {
-      if (networkInterface.family !== "IPv4" || networkInterface.internal !== false || checkIp === false) {
-        continue;
-      }
-      localIp = networkInterface.address
-      checkIp = true;
-      return;
-    }
-  });
-
-  return localIp
-}
-
 export default {
   mediasoup: {
     numWorkers: Object.keys(os.cpus()).length,
     worker: {
       rtcMinPort: 10000,
-      rtcMaxPort: 10200,
+      rtcMaxPort: 10500,
       logLevel: "warn" as mediasoupTypes.WorkerLogLevel,
       logTags: [
         "info",
@@ -35,11 +15,11 @@ export default {
         "rtp",
         "srtp",
         "rtcp",
-        "rtx",
-        "bwe",
-        "score",
-        "simulcast",
-        "svc"
+        // "rtx",
+        // "bwe",
+        // "score",
+        // "simulcast",
+        // "svc"
       ] as mediasoupTypes.WorkerLogTag[]
     },
     router: {
@@ -93,8 +73,8 @@ export default {
     } as mediasoupTypes.RouterOptions,
     webRtcTransport: {
       listenInfos: [
-        { protocol: "udp", ip: "0.0.0.0", announcedAddress: getLocalIp() },
-        { protocol: "tcp", ip: "0.0.0.0", announcedAddress: getLocalIp() },
+        { protocol: "udp", ip: "0.0.0.0", announcedAddress: process.env.PUBLIC_IP },
+        { protocol: "tcp", ip: "0.0.0.0", announcedAddress: process.env.PUBLIC_IP },
       ] as mediasoupTypes.TransportListenInfo[],
       maxIncomingBitrate: 1500000,
       initialAvailableOutgoingBitrate: 1000000
