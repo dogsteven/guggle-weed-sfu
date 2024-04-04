@@ -1,5 +1,8 @@
 import os from "os";
 import { types as mediasoupTypes } from "mediasoup";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export default {
   mediasoup: {
