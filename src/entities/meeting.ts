@@ -5,7 +5,6 @@ import mediasoupConfiguration from "../configurations/mediasoupConfiguration";
 export default class Meeting {
   public readonly id: any;
   private _ended: boolean;
-  public readonly hostId: any;
   private readonly _router: types.Router;
   private readonly _attendees: Map<any, Attendee>;
 
@@ -20,10 +19,9 @@ export default class Meeting {
     }));
   }
 
-  private constructor(id: any, hostId: any, router: types.Router) {
+  private constructor(id: any, router: types.Router) {
     this.id = id;
     this._ended = false;
-    this.hostId = hostId;
     this._router = router;
     this._attendees = new Map<any, Attendee>();
 
@@ -32,10 +30,10 @@ export default class Meeting {
     });
   }
 
-  public static async create(id: any, hostId: any, worker: types.Worker): Promise<Meeting> {
+  public static async create(id: any, worker: types.Worker): Promise<Meeting> {
     const router = await worker.createRouter(mediasoupConfiguration.mediasoup.router);
 
-    return new Meeting(id, hostId, router);
+    return new Meeting(id, router);
   }
 
   public end(): void {

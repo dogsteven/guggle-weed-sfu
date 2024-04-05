@@ -87,55 +87,6 @@ class GuggleWeedApplication {
   }
 
   private bootMeetingSection() {
-    this._expressApplication.get("/meetings/:meetingId", (request, response) => {
-      const result = wrapResult(() => {
-        const meetingId = request.params.meetingId;
-
-        const meeting = this._meetingRepository.get(meetingId);
-
-        return {
-          hostId: meeting.hostId,
-          attendees: meeting.attendees
-        };
-      });
-
-      this._eventService.publish("guggle-weed-action-log", {
-        event: "GetMeetingInformation",
-        payload: {
-          arguments: {
-            meetingId: request.params.meetingId
-          },
-          result: result
-        }
-      });
-
-      response.json(result);
-    });
-
-    this._expressApplication.get("/meetings/:meetingId/hostId", (request, response) => {
-      const result = wrapResult(() => {
-        const meetingId = request.params.meetingId;
-
-        const meeting = this._meetingRepository.get(meetingId);
-
-        return {
-          hostId: meeting.hostId
-        };
-      });
-
-      this._eventService.publish("guggle-weed-action-log", {
-        event: "GetMeetingHostId",
-        payload: {
-          arguments: {
-            meetingId: request.params.meetingId
-          },
-          result: result
-        }
-      });
-
-      response.json(result);
-    });
-
     this._expressApplication.get("/meetings/:meetingId/attendees", (request, response) => {
       const result = wrapResult(() => {
         const meetingId = request.params.meetingId;
@@ -162,9 +113,7 @@ class GuggleWeedApplication {
 
     this._expressApplication.post("/meetings/start", async (request, response) => {
       const result = await wrapResultAsync(async () => {
-        const username = request.headers["x-username"] as string;
-
-        const meeting = await this._meetingRepository.create(username);
+        const meeting = await this._meetingRepository.create();
         
         return {
           meetingId: meeting.id
@@ -186,14 +135,9 @@ class GuggleWeedApplication {
 
     this._expressApplication.post("/meetings/:meetingId/end", async (request, response) => {
       const result = wrapVoid(() => {
-        const username = request.headers["x-username"] as string;
         const meetingId = request.params.meetingId;
 
         const meeting = this._meetingRepository.get(meetingId);
-
-        if (meeting.hostId !== username) {
-          throw new Error(`You don't have permission to end this meeting`);
-        }
 
         meeting.end();
 

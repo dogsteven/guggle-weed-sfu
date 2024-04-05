@@ -14,8 +14,8 @@ export default class MeetingRepositoryImplementation implements MeetingRepositor
     this._meetings = new Map<any, Meeting>();
   }
 
-  public async create(hostId: any): Promise<Meeting> {
-    const meeting = await Meeting.create(v4(), hostId, this._workerRepository.pickWorker());
+  public async create(): Promise<Meeting> {
+    const meeting = await Meeting.create(v4(), this._workerRepository.pickWorker());
 
     this._meetings.set(meeting.id, meeting);
 
